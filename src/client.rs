@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::config::OlympusConfig;
 use crate::error::Result;
 use crate::http::OlympusHttpClient;
+use crate::services::agent_workflows::AgentWorkflowsService;
 use crate::services::ai::AiService;
 use crate::services::auth::AuthService;
 use crate::services::business::BusinessService;
@@ -89,5 +90,13 @@ impl OlympusClient {
     /// Returns the POS voice order integration service.
     pub fn pos(&self) -> PosService {
         PosService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the AI Agent Workflow Orchestration service (#2915).
+    ///
+    /// Tenant-scoped multi-agent DAG pipelines with cron/event triggers,
+    /// capability routing, and billing. Distinct from marketplace workflows.
+    pub fn agent_workflows(&self) -> AgentWorkflowsService {
+        AgentWorkflowsService::new(Arc::clone(&self.http))
     }
 }
