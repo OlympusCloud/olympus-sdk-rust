@@ -53,6 +53,13 @@ impl OlympusHttpClient {
         self.execute(req).await
     }
 
+    /// Sends a PATCH request with a JSON body.
+    pub async fn patch(&self, path: &str, body: &Value) -> Result<Value> {
+        let url = self.url(path);
+        let req = self.apply_headers(self.client.patch(&url)).json(body);
+        self.execute(req).await
+    }
+
     /// Sends a DELETE request to the given path.
     pub async fn delete(&self, path: &str) -> Result<Value> {
         let url = self.url(path);

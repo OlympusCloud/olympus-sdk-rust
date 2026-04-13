@@ -9,8 +9,11 @@ use crate::services::auth::AuthService;
 use crate::services::business::BusinessService;
 use crate::services::commerce::CommerceService;
 use crate::services::creator::CreatorService;
+use crate::services::enterprise_context::EnterpriseContextService;
+use crate::services::messages::MessagesService;
 use crate::services::platform::PlatformService;
 use crate::services::pos::PosService;
+use crate::services::voice_orders::VoiceOrdersService;
 
 /// Main entry point for the Olympus Cloud SDK.
 ///
@@ -98,5 +101,29 @@ impl OlympusClient {
     /// capability routing, and billing. Distinct from marketplace workflows.
     pub fn agent_workflows(&self) -> AgentWorkflowsService {
         AgentWorkflowsService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the Enterprise Context service (#2993).
+    ///
+    /// Company 360 context assembly for AI agents -- brand, locations, menu,
+    /// specials, FAQs, upsells, inventory, caller profile, graph relationships.
+    pub fn enterprise_context(&self) -> EnterpriseContextService {
+        EnterpriseContextService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the Messages service (#2997).
+    ///
+    /// Message queue with department routing. AI agents route messages to
+    /// business departments when they cannot fully handle a request.
+    pub fn messages(&self) -> MessagesService {
+        MessagesService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the Voice Orders service (#2999).
+    ///
+    /// AI voice order placement with price validation, Spanner storage,
+    /// and POS push (Toast/Square/Clover).
+    pub fn voice_orders(&self) -> VoiceOrdersService {
+        VoiceOrdersService::new(Arc::clone(&self.http))
     }
 }
