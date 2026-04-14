@@ -1,11 +1,16 @@
+pub mod admin_ops;
 pub mod agent_workflows;
 pub mod ai;
 pub mod auth;
 pub mod business;
+pub mod chaos;
 pub mod commerce;
 pub mod creator;
 pub mod enterprise_context;
+pub mod ethical_ai;
+pub mod finops;
 pub mod messages;
 pub mod platform;
 pub mod pos;
+pub mod sre_analytics;
 pub mod voice_orders;

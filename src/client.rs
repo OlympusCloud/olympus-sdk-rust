@@ -3,16 +3,21 @@ use std::sync::Arc;
 use crate::config::OlympusConfig;
 use crate::error::Result;
 use crate::http::OlympusHttpClient;
+use crate::services::admin_ops::AdminOpsService;
 use crate::services::agent_workflows::AgentWorkflowsService;
 use crate::services::ai::AiService;
 use crate::services::auth::AuthService;
 use crate::services::business::BusinessService;
+use crate::services::chaos::ChaosService;
 use crate::services::commerce::CommerceService;
 use crate::services::creator::CreatorService;
 use crate::services::enterprise_context::EnterpriseContextService;
+use crate::services::ethical_ai::EthicalAiService;
+use crate::services::finops::FinOpsService;
 use crate::services::messages::MessagesService;
 use crate::services::platform::PlatformService;
 use crate::services::pos::PosService;
+use crate::services::sre_analytics::SreAnalyticsService;
 use crate::services::voice_orders::VoiceOrdersService;
 
 /// Main entry point for the Olympus Cloud SDK.
@@ -125,5 +130,45 @@ impl OlympusClient {
     /// and POS push (Toast/Square/Clover).
     pub fn voice_orders(&self) -> VoiceOrdersService {
         VoiceOrdersService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the Admin Operations service (#243).
+    ///
+    /// Platform-level admin operations: impersonation, billing, sales,
+    /// support tickets, onboarding, and devbox lifecycle management.
+    pub fn admin_ops(&self) -> AdminOpsService {
+        AdminOpsService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the Chaos Engineering service (#2938, #2939, #2940).
+    ///
+    /// Fault injection queue, DR drills with RTO/RPO analysis,
+    /// and gameday orchestration for resilience testing.
+    pub fn chaos(&self) -> ChaosService {
+        ChaosService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the Ethical AI governance service (#2935, #2936, #2937).
+    ///
+    /// Bias detection, red-teaming, model cards, AI safety policy,
+    /// and explainability reporting.
+    pub fn ethical_ai(&self) -> EthicalAiService {
+        EthicalAiService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the FinOps service (#2941, #2942, #2943).
+    ///
+    /// AI cost management dashboard, budget enforcement with hard limits,
+    /// cost anomaly detection, and optimization recommendations.
+    pub fn finops(&self) -> FinOpsService {
+        FinOpsService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the SRE Analytics service (#2945, #2946, #2947).
+    ///
+    /// SLO tracking with error budgets, synthetic monitoring probes,
+    /// capacity planning forecasts, and incident management.
+    pub fn sre_analytics(&self) -> SreAnalyticsService {
+        SreAnalyticsService::new(Arc::clone(&self.http))
     }
 }
