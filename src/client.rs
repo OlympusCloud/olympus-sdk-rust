@@ -3,6 +3,10 @@ use std::sync::Arc;
 use crate::config::OlympusConfig;
 use crate::error::Result;
 use crate::http::OlympusHttpClient;
+use crate::services::admin_billing::AdminBillingService;
+use crate::services::admin_cpaas::AdminCpaasService;
+use crate::services::admin_ether::AdminEtherService;
+use crate::services::admin_gating::AdminGatingService;
 use crate::services::admin_ops::AdminOpsService;
 use crate::services::agent_workflows::AgentWorkflowsService;
 use crate::services::ai::AiService;
@@ -18,6 +22,7 @@ use crate::services::messages::MessagesService;
 use crate::services::platform::PlatformService;
 use crate::services::pos::PosService;
 use crate::services::sre_analytics::SreAnalyticsService;
+use crate::services::tuning::TuningService;
 use crate::services::voice_orders::VoiceOrdersService;
 
 /// Main entry point for the Olympus Cloud SDK.
@@ -138,6 +143,44 @@ impl OlympusClient {
     /// support tickets, onboarding, and devbox lifecycle management.
     pub fn admin_ops(&self) -> AdminOpsService {
         AdminOpsService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the Ether AI model catalog admin service.
+    ///
+    /// CRUD for models and tiers, plus hot-reload of the catalog cache.
+    pub fn admin_ether(&self) -> AdminEtherService {
+        AdminEtherService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the CPaaS provider configuration and health admin service.
+    ///
+    /// Controls Telnyx-primary / Twilio-fallback routing, provider preferences
+    /// per scope (tenant, brand, location), and circuit-breaker health.
+    pub fn admin_cpaas(&self) -> AdminCpaasService {
+        AdminCpaasService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the billing plan catalog and usage metering admin service.
+    ///
+    /// Manages the global plan catalog, add-ons, minute packs, and usage recording.
+    pub fn admin_billing(&self) -> AdminBillingService {
+        AdminBillingService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the feature flag and gating admin service.
+    ///
+    /// Manages feature definitions, plan-level assignments, resource limits,
+    /// and feature evaluation.
+    pub fn admin_gating(&self) -> AdminGatingService {
+        AdminGatingService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the AI tuning jobs, persona generation, and chaos audio service.
+    ///
+    /// Model fine-tuning lifecycle, synthetic persona generation for load
+    /// testing, and audio noise simulation for chaos testing voice pipelines.
+    pub fn tuning(&self) -> TuningService {
+        TuningService::new(Arc::clone(&self.http))
     }
 
     /// Returns the Chaos Engineering service (#2938, #2939, #2940).

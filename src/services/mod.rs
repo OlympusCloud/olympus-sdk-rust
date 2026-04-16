@@ -1,3 +1,7 @@
+pub mod admin_billing;
+pub mod admin_cpaas;
+pub mod admin_ether;
+pub mod admin_gating;
 pub mod admin_ops;
 pub mod agent_workflows;
 pub mod ai;
@@ -13,4 +17,5 @@ pub mod messages;
 pub mod platform;
 pub mod pos;
 pub mod sre_analytics;
+pub mod tuning;
 pub mod voice_orders;
