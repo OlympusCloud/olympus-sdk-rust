@@ -15,10 +15,12 @@ use crate::services::business::BusinessService;
 use crate::services::chaos::ChaosService;
 use crate::services::commerce::CommerceService;
 use crate::services::connect::ConnectService;
+use crate::services::consent::ConsentService;
 use crate::services::creator::CreatorService;
 use crate::services::enterprise_context::EnterpriseContextService;
 use crate::services::ethical_ai::EthicalAiService;
 use crate::services::finops::FinOpsService;
+use crate::services::governance::GovernanceService;
 use crate::services::messages::MessagesService;
 use crate::services::platform::PlatformService;
 use crate::services::pos::PosService;
@@ -228,4 +230,103 @@ impl OlympusClient {
     pub fn sre_analytics(&self) -> SreAnalyticsService {
         SreAnalyticsService::new(Arc::clone(&self.http))
     }
+
+    // =======================================================================
+    // App-scoped permissions (v2.0 — olympus-cloud-gcp#3254 / #3234 epic)
+    // =======================================================================
+
+    /// Returns the app-scoped consent service (v2.0).
+    ///
+    /// Platform-governed scope grants for tenant-admin + end-user consent.
+    /// See docs/platform/APP-SCOPED-PERMISSIONS.md §6.
+    pub fn consent(&self) -> ConsentService {
+        ConsentService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the policy exception framework service (v2.0).
+    ///
+    /// Narrow scope: `session_ttl_role_ceiling` and `grace_policy_category`
+    /// only. See §17 of APP-SCOPED-PERMISSIONS.md.
+    pub fn governance(&self) -> GovernanceService {
+        GovernanceService::new(Arc::clone(&self.http))
+    }
+
+    /// Attach the App JWT obtained from `/auth/app-tokens/mint`. Forwarded on
+    /// every request as `X-App-Token` alongside the user JWT Authorization
+    /// header per the §4.5 dual-JWT flow.
+    pub fn set_app_token(&self, token: impl Into<String>) {
+        self.http.set_app_token(token);
+    }
+
+    /// Clear the app token.
+    pub fn clear_app_token(&self) {
+        self.http.clear_app_token();
+    }
+
+    /// Replace the active access token.
+    pub fn set_access_token(&self, token: impl Into<String>) {
+        self.http.set_access_token(token);
+    }
+
+    /// Register a handler for `X-Olympus-Catalog-Stale: true` (§4.7 rolling
+    /// window). Handler fires AT MOST ONCE per stale-token window — resets
+    /// when the access or app token changes. Consumers should schedule a
+    /// background refresh at a randomized 0–15 min offset.
+    pub fn on_catalog_stale(&self, handler: Option<crate::http::StaleCatalogHandler>) {
+        self.http.on_catalog_stale(handler);
+    }
+
+    /// Fast-path constant-time bitmask check against the decoded
+    /// `app_scopes_bitset` claim in the current access token.
+    ///
+    /// Returns `false` when no token set, for platform-shell tokens without a
+    /// bitset, when `bit_id` is out of range. Used by SDK service methods to
+    /// fail-fast with [`OlympusError::ScopeDenied`] BEFORE an HTTP call.
+    pub fn has_scope_bit(&self, bit_id: usize) -> bool {
+        let Some(bytes) = decode_bitset(&self.http) else {
+            return false;
+        };
+        let byte_idx = bit_id / 8;
+        let bit_idx = bit_id % 8;
+        match bytes.get(byte_idx) {
+            Some(&b) => b & (1 << bit_idx) != 0,
+            None => false,
+        }
+    }
+
+    /// True when the current access token carries an `app_id` claim (minted
+    /// via `/auth/app-tokens/mint` for an app-scoped session).
+    pub fn is_app_scoped(&self) -> bool {
+        decode_claims(&self.http)
+            .and_then(|c| c.get("app_id").and_then(|v| v.as_str()).map(|_| ()))
+            .is_some()
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Internal JWT decode helpers — pure, no signature verification (middleware's
+// job). Used only to surface claims client-side for the bitset fast-path.
+// ---------------------------------------------------------------------------
+
+fn decode_claims(http: &OlympusHttpClient) -> Option<serde_json::Value> {
+    let token = http.access_token_for_internal()?;
+    let mut parts = token.splitn(3, '.');
+    let _header = parts.next()?;
+    let payload = parts.next()?;
+    let bytes = base64_url_decode(payload)?;
+    serde_json::from_slice(&bytes).ok()
+}
+
+fn decode_bitset(http: &OlympusHttpClient) -> Option<Vec<u8>> {
+    let claims = decode_claims(http)?;
+    let bitset = claims.get("app_scopes_bitset").and_then(|v| v.as_str())?;
+    if bitset.is_empty() {
+        return Some(Vec::new());
+    }
+    base64_url_decode(bitset)
+}
+
+fn base64_url_decode(s: &str) -> Option<Vec<u8>> {
+    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+    URL_SAFE_NO_PAD.decode(s).ok()
 }
