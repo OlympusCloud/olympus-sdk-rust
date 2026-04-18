@@ -22,6 +22,23 @@ struct HttpState {
     on_stale_catalog: Option<StaleCatalogHandler>,
     // Debounce: last access_token value that already fired the stale handler.
     stale_notified_for_token: Option<String>,
+    // Cached decoded JWT payload + scope bitset keyed by access_token. `has_scope_bit`
+    // is intended as a fast-path check that may be called before every service call,
+    // so we amortize the base64 + JSON decode cost across repeat invocations with
+    // the same token. Invalidated whenever access_token changes.
+    cached_claims: Option<serde_json::Value>,
+    cached_claims_for_token: Option<String>,
+    cached_bitset: Option<Vec<u8>>,
+    cached_bitset_for_token: Option<String>,
+}
+
+impl HttpState {
+    fn invalidate_decode_cache(&mut self) {
+        self.cached_claims = None;
+        self.cached_claims_for_token = None;
+        self.cached_bitset = None;
+        self.cached_bitset_for_token = None;
+    }
 }
 
 /// HTTP transport layer that wraps `reqwest::Client` with Olympus auth headers.
@@ -59,6 +76,7 @@ impl OlympusHttpClient {
         let mut s = self.state.write().expect("poisoned");
         s.access_token = Some(token.into());
         s.stale_notified_for_token = None;
+        s.invalidate_decode_cache();
     }
 
     /// Clear the user access token.
@@ -66,6 +84,7 @@ impl OlympusHttpClient {
         let mut s = self.state.write().expect("poisoned");
         s.access_token = None;
         s.stale_notified_for_token = None;
+        s.invalidate_decode_cache();
     }
 
     /// Set the App JWT (X-App-Token, §4.5 dual-JWT flow).
@@ -85,6 +104,90 @@ impl OlympusHttpClient {
     /// Internal — returns the current access token for JWT-bitset decoding.
     pub fn access_token_for_internal(&self) -> Option<String> {
         self.state.read().expect("poisoned").access_token.clone()
+    }
+
+    /// Internal fast-path: returns the decoded scope bitset for the current
+    /// access token, caching the decode across calls. Called by
+    /// `OlympusClient::has_scope_bit` — which may be invoked before every
+    /// service call, so the base64 + JSON decode is amortized.
+    ///
+    /// Returns `None` when no token is set. Returns `Some(vec![])` when the
+    /// token carries no `app_scopes_bitset` claim (platform shell) — the
+    /// caller then reports all bits as false.
+    pub fn decoded_bitset_cached(&self) -> Option<Vec<u8>> {
+        let token = {
+            let s = self.state.read().expect("poisoned");
+            s.access_token.clone()?
+        };
+
+        // Fast path: read lock, check both caches against the current token.
+        {
+            let s = self.state.read().expect("poisoned");
+            if s.cached_bitset_for_token.as_deref() == Some(&token) {
+                if let Some(bytes) = &s.cached_bitset {
+                    return Some(bytes.clone());
+                }
+            }
+        }
+
+        // Miss — decode claims (respecting claims cache) then bitset.
+        let claims = self.decoded_claims_cached_impl(&token)?;
+        let bitset_str = claims
+            .get("app_scopes_bitset")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let bytes = if bitset_str.is_empty() {
+            Vec::new()
+        } else {
+            base64_url_decode(bitset_str)?
+        };
+
+        let mut s = self.state.write().expect("poisoned");
+        // Another writer may have raced us — double-check.
+        if s.cached_bitset_for_token.as_deref() == Some(&token) {
+            if let Some(existing) = &s.cached_bitset {
+                return Some(existing.clone());
+            }
+        }
+        s.cached_bitset = Some(bytes.clone());
+        s.cached_bitset_for_token = Some(token);
+        Some(bytes)
+    }
+
+    /// Internal — decoded JWT claims, cached per-token.
+    pub fn decoded_claims_cached(&self) -> Option<serde_json::Value> {
+        let token = {
+            let s = self.state.read().expect("poisoned");
+            s.access_token.clone()?
+        };
+        self.decoded_claims_cached_impl(&token)
+    }
+
+    fn decoded_claims_cached_impl(&self, token: &str) -> Option<serde_json::Value> {
+        {
+            let s = self.state.read().expect("poisoned");
+            if s.cached_claims_for_token.as_deref() == Some(token) {
+                if let Some(claims) = &s.cached_claims {
+                    return Some(claims.clone());
+                }
+            }
+        }
+        let parts: Vec<&str> = token.splitn(3, '.').collect();
+        if parts.len() < 2 {
+            return None;
+        }
+        let bytes = base64_url_decode(parts[1])?;
+        let claims: serde_json::Value = serde_json::from_slice(&bytes).ok()?;
+
+        let mut s = self.state.write().expect("poisoned");
+        if s.cached_claims_for_token.as_deref() == Some(token) {
+            if let Some(existing) = &s.cached_claims {
+                return Some(existing.clone());
+            }
+        }
+        s.cached_claims = Some(claims.clone());
+        s.cached_claims_for_token = Some(token.to_string());
+        Some(claims)
     }
 
     /// Register a stale-catalog handler (§4.7). Fires at most once per
@@ -228,6 +331,11 @@ impl OlympusHttpClient {
 // ---------------------------------------------------------------------------
 // Typed error routing for app-scoped permissions (§6 + §17.7)
 // ---------------------------------------------------------------------------
+
+fn base64_url_decode(s: &str) -> Option<Vec<u8>> {
+    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+    URL_SAFE_NO_PAD.decode(s).ok()
+}
 
 fn extract_error_fields(body: &Option<Value>, raw: &str) -> (String, String, Option<String>) {
     let mut code = String::new();

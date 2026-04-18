@@ -282,8 +282,13 @@ impl OlympusClient {
     /// Returns `false` when no token set, for platform-shell tokens without a
     /// bitset, when `bit_id` is out of range. Used by SDK service methods to
     /// fail-fast with [`OlympusError::ScopeDenied`] BEFORE an HTTP call.
+    ///
+    /// The decode (base64 + JSON parse) is cached per-token on the underlying
+    /// HTTP state, so repeated calls with the same token amortize to a single
+    /// decode; the cache invalidates automatically on
+    /// [`Self::set_access_token`] / [`Self::clear_app_token`].
     pub fn has_scope_bit(&self, bit_id: usize) -> bool {
-        let Some(bytes) = decode_bitset(&self.http) else {
+        let Some(bytes) = self.http.decoded_bitset_cached() else {
             return false;
         };
         let byte_idx = bit_id / 8;
@@ -297,36 +302,9 @@ impl OlympusClient {
     /// True when the current access token carries an `app_id` claim (minted
     /// via `/auth/app-tokens/mint` for an app-scoped session).
     pub fn is_app_scoped(&self) -> bool {
-        decode_claims(&self.http)
+        self.http
+            .decoded_claims_cached()
             .and_then(|c| c.get("app_id").and_then(|v| v.as_str()).map(|_| ()))
             .is_some()
     }
-}
-
-// ---------------------------------------------------------------------------
-// Internal JWT decode helpers — pure, no signature verification (middleware's
-// job). Used only to surface claims client-side for the bitset fast-path.
-// ---------------------------------------------------------------------------
-
-fn decode_claims(http: &OlympusHttpClient) -> Option<serde_json::Value> {
-    let token = http.access_token_for_internal()?;
-    let mut parts = token.splitn(3, '.');
-    let _header = parts.next()?;
-    let payload = parts.next()?;
-    let bytes = base64_url_decode(payload)?;
-    serde_json::from_slice(&bytes).ok()
-}
-
-fn decode_bitset(http: &OlympusHttpClient) -> Option<Vec<u8>> {
-    let claims = decode_claims(http)?;
-    let bitset = claims.get("app_scopes_bitset").and_then(|v| v.as_str())?;
-    if bitset.is_empty() {
-        return Some(Vec::new());
-    }
-    base64_url_decode(bitset)
-}
-
-fn base64_url_decode(s: &str) -> Option<Vec<u8>> {
-    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
-    URL_SAFE_NO_PAD.decode(s).ok()
 }
