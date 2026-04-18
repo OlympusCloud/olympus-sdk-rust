@@ -14,6 +14,7 @@ use crate::services::auth::AuthService;
 use crate::services::business::BusinessService;
 use crate::services::chaos::ChaosService;
 use crate::services::commerce::CommerceService;
+use crate::services::connect::ConnectService;
 use crate::services::creator::CreatorService;
 use crate::services::enterprise_context::EnterpriseContextService;
 use crate::services::ethical_ai::EthicalAiService;
@@ -23,6 +24,7 @@ use crate::services::platform::PlatformService;
 use crate::services::pos::PosService;
 use crate::services::sre_analytics::SreAnalyticsService;
 use crate::services::tuning::TuningService;
+use crate::services::voice::VoiceService;
 use crate::services::voice_orders::VoiceOrdersService;
 
 /// Main entry point for the Olympus Cloud SDK.
@@ -135,6 +137,18 @@ impl OlympusClient {
     /// and POS push (Toast/Square/Clover).
     pub fn voice_orders(&self) -> VoiceOrdersService {
         VoiceOrdersService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the Voice AI service with V2-005 cascade resolver (#3162).
+    /// v0.4.0 Wave 1.
+    pub fn voice(&self) -> VoiceService {
+        VoiceService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the Marketing Connect service — /leads funnel (#3108).
+    /// v0.4.0 Wave 1.
+    pub fn connect(&self) -> ConnectService {
+        ConnectService::new(Arc::clone(&self.http))
     }
 
     /// Returns the Admin Operations service (#243).
