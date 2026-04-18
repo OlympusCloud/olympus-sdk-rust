@@ -3,16 +3,28 @@ use std::sync::Arc;
 use crate::config::OlympusConfig;
 use crate::error::Result;
 use crate::http::OlympusHttpClient;
+use crate::services::admin_billing::AdminBillingService;
+use crate::services::admin_cpaas::AdminCpaasService;
+use crate::services::admin_ether::AdminEtherService;
+use crate::services::admin_gating::AdminGatingService;
+use crate::services::admin_ops::AdminOpsService;
 use crate::services::agent_workflows::AgentWorkflowsService;
 use crate::services::ai::AiService;
 use crate::services::auth::AuthService;
 use crate::services::business::BusinessService;
+use crate::services::chaos::ChaosService;
 use crate::services::commerce::CommerceService;
+use crate::services::connect::ConnectService;
 use crate::services::creator::CreatorService;
 use crate::services::enterprise_context::EnterpriseContextService;
+use crate::services::ethical_ai::EthicalAiService;
+use crate::services::finops::FinOpsService;
 use crate::services::messages::MessagesService;
 use crate::services::platform::PlatformService;
 use crate::services::pos::PosService;
+use crate::services::sre_analytics::SreAnalyticsService;
+use crate::services::tuning::TuningService;
+use crate::services::voice::VoiceService;
 use crate::services::voice_orders::VoiceOrdersService;
 
 /// Main entry point for the Olympus Cloud SDK.
@@ -125,5 +137,95 @@ impl OlympusClient {
     /// and POS push (Toast/Square/Clover).
     pub fn voice_orders(&self) -> VoiceOrdersService {
         VoiceOrdersService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the Voice AI service with V2-005 cascade resolver (#3162).
+    /// v0.4.0 Wave 1.
+    pub fn voice(&self) -> VoiceService {
+        VoiceService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the Marketing Connect service — /leads funnel (#3108).
+    /// v0.4.0 Wave 1.
+    pub fn connect(&self) -> ConnectService {
+        ConnectService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the Admin Operations service (#243).
+    ///
+    /// Platform-level admin operations: impersonation, billing, sales,
+    /// support tickets, onboarding, and devbox lifecycle management.
+    pub fn admin_ops(&self) -> AdminOpsService {
+        AdminOpsService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the Ether AI model catalog admin service.
+    ///
+    /// CRUD for models and tiers, plus hot-reload of the catalog cache.
+    pub fn admin_ether(&self) -> AdminEtherService {
+        AdminEtherService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the CPaaS provider configuration and health admin service.
+    ///
+    /// Controls Telnyx-primary / Twilio-fallback routing, provider preferences
+    /// per scope (tenant, brand, location), and circuit-breaker health.
+    pub fn admin_cpaas(&self) -> AdminCpaasService {
+        AdminCpaasService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the billing plan catalog and usage metering admin service.
+    ///
+    /// Manages the global plan catalog, add-ons, minute packs, and usage recording.
+    pub fn admin_billing(&self) -> AdminBillingService {
+        AdminBillingService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the feature flag and gating admin service.
+    ///
+    /// Manages feature definitions, plan-level assignments, resource limits,
+    /// and feature evaluation.
+    pub fn admin_gating(&self) -> AdminGatingService {
+        AdminGatingService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the AI tuning jobs, persona generation, and chaos audio service.
+    ///
+    /// Model fine-tuning lifecycle, synthetic persona generation for load
+    /// testing, and audio noise simulation for chaos testing voice pipelines.
+    pub fn tuning(&self) -> TuningService {
+        TuningService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the Chaos Engineering service (#2938, #2939, #2940).
+    ///
+    /// Fault injection queue, DR drills with RTO/RPO analysis,
+    /// and gameday orchestration for resilience testing.
+    pub fn chaos(&self) -> ChaosService {
+        ChaosService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the Ethical AI governance service (#2935, #2936, #2937).
+    ///
+    /// Bias detection, red-teaming, model cards, AI safety policy,
+    /// and explainability reporting.
+    pub fn ethical_ai(&self) -> EthicalAiService {
+        EthicalAiService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the FinOps service (#2941, #2942, #2943).
+    ///
+    /// AI cost management dashboard, budget enforcement with hard limits,
+    /// cost anomaly detection, and optimization recommendations.
+    pub fn finops(&self) -> FinOpsService {
+        FinOpsService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the SRE Analytics service (#2945, #2946, #2947).
+    ///
+    /// SLO tracking with error budgets, synthetic monitoring probes,
+    /// capacity planning forecasts, and incident management.
+    pub fn sre_analytics(&self) -> SreAnalyticsService {
+        SreAnalyticsService::new(Arc::clone(&self.http))
     }
 }
