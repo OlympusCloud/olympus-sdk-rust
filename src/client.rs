@@ -15,10 +15,12 @@ use crate::services::business::BusinessService;
 use crate::services::chaos::ChaosService;
 use crate::services::commerce::CommerceService;
 use crate::services::connect::ConnectService;
+use crate::services::consent::ConsentService;
 use crate::services::creator::CreatorService;
 use crate::services::enterprise_context::EnterpriseContextService;
 use crate::services::ethical_ai::EthicalAiService;
 use crate::services::finops::FinOpsService;
+use crate::services::governance::GovernanceService;
 use crate::services::messages::MessagesService;
 use crate::services::platform::PlatformService;
 use crate::services::pos::PosService;
@@ -228,4 +230,5 @@ impl OlympusClient {
     pub fn sre_analytics(&self) -> SreAnalyticsService {
         SreAnalyticsService::new(Arc::clone(&self.http))
     }
-}
+
+    // ================================================================}
