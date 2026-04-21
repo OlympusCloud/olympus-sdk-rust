@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### App-scoped permissions — string-keyed scope helpers (#3403 §1.2)
+
+- `OlympusClient::has_scope(&str) -> bool` — string-keyed complement to the
+  existing bitset fast-path `has_scope_bit(usize)`.
+- `OlympusClient::require_scope(&str) -> Result<()>` — client-side precheck
+  returning `OlympusError::ScopeRequired { scope }` on miss. Distinct from
+  server-side `ScopeDenied` / `ConsentRequired` which are still returned by
+  the HTTP layer on 403 responses.
+- `OlympusClient::granted_scopes() -> HashSet<String>` — decoded from the
+  `app_scopes` JWT claim (array of canonical scope strings, per §7.1).
+- New `OlympusError::ScopeRequired { scope }` variant.
+- Generated constants under `olympus_sdk::constants` (re-exported at the
+  crate root as `OlympusScopes` and `OlympusRoles`), produced from
+  `docs/platform/{scopes,roles}.yaml` via
+  `scripts/generate_sdk_scope_constants.py`. Do not hand-edit the generated
+  files.
+
 ## 0.5.0 (2026-04-19)
 
 ### Wave 2 of the SDK 1.0 Campaign (OlympusCloud/olympus-cloud-gcp#3216)

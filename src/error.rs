@@ -75,16 +75,25 @@ pub enum OlympusError {
         status: u16,
         request_id: Option<String>,
     },
+
+    /// Client-side precheck failure: the caller invoked `require_scope` for a
+    /// scope that is not present in the current access token's `app_scopes`
+    /// claim. Distinct from `ScopeDenied` (server-side 403) and
+    /// `ConsentRequired` (server-side 403 with consent_url) — this is emitted
+    /// locally by the SDK before any network call is made. See #3403 §1.2.
+    #[error("Scope required but not granted: {scope}")]
+    ScopeRequired { scope: String },
 }
 
 impl OlympusError {
     /// Returns the scope string when the error is one of the scope-bearing
-    /// variants (ConsentRequired, ScopeDenied). Convenience for consumer code
-    /// that wants to branch on "any scope failure".
+    /// variants (ConsentRequired, ScopeDenied, ScopeRequired). Convenience for
+    /// consumer code that wants to branch on "any scope failure".
     pub fn scope(&self) -> Option<&str> {
         match self {
             OlympusError::ConsentRequired { scope, .. } => Some(scope),
             OlympusError::ScopeDenied { scope, .. } => Some(scope),
+            OlympusError::ScopeRequired { scope } => Some(scope),
             _ => None,
         }
     }

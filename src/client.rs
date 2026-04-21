@@ -1,7 +1,8 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use crate::config::OlympusConfig;
-use crate::error::Result;
+use crate::error::{OlympusError, Result};
 use crate::http::OlympusHttpClient;
 use crate::services::admin_billing::AdminBillingService;
 use crate::services::admin_cpaas::AdminCpaasService;
@@ -332,5 +333,58 @@ impl OlympusClient {
             return false;
         }
         (bytes[byte_idx] >> (bit % 8)) & 1 == 1
+    }
+
+    /// String-keyed scope check against the `app_scopes` array claim in the
+    /// current access token. Complements [`Self::has_scope_bit`] for callers
+    /// that have the canonical scope string (e.g. generated constants from
+    /// [`crate::OlympusScopes`]) but not the catalog bit ID.
+    ///
+    /// Returns `false` when no access token is set, when the token carries no
+    /// `app_scopes` claim (platform-shell tokens), or when the scope is not
+    /// present in the granted set.
+    ///
+    /// See #3403 §1.2.
+    pub fn has_scope(&self, scope: &str) -> bool {
+        self.granted_scopes().contains(scope)
+    }
+
+    /// Returns `Ok(())` if the scope is granted, else
+    /// [`OlympusError::ScopeRequired`]. This is a **client-side precheck** —
+    /// it does not call the server. The server remains the source of truth
+    /// (responds with [`OlympusError::ScopeDenied`] /
+    /// [`OlympusError::ConsentRequired`] on actual requests).
+    ///
+    /// See #3403 §1.2.
+    pub fn require_scope(&self, scope: &str) -> Result<()> {
+        if self.has_scope(scope) {
+            Ok(())
+        } else {
+            Err(OlympusError::ScopeRequired {
+                scope: scope.to_string(),
+            })
+        }
+    }
+
+    /// All scopes granted to the current session, decoded from the
+    /// `app_scopes` claim on the current access token.
+    ///
+    /// Returns an empty set when no token is set, when the token carries no
+    /// `app_scopes` claim, or when the claim is not a JSON array of strings.
+    /// The returned set is a fresh allocation; the SDK does not retain it.
+    ///
+    /// See #3403 §1.2.
+    pub fn granted_scopes(&self) -> HashSet<String> {
+        let claims = match self.http.decoded_claims_cached() {
+            Some(c) => c,
+            None => return HashSet::new(),
+        };
+        let arr = match claims.get("app_scopes").and_then(|v| v.as_array()) {
+            Some(a) => a,
+            None => return HashSet::new(),
+        };
+        arr.iter()
+            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+            .collect()
     }
 }
