@@ -15,10 +15,13 @@
 
 pub mod client;
 pub mod config;
+pub mod constants;
 pub mod error;
 pub mod http;
 pub mod services;
 
 pub use client::OlympusClient;
 pub use config::OlympusConfig;
+pub use constants::roles::OlympusRoles;
+pub use constants::scopes::OlympusScopes;
 pub use error::OlympusError;
