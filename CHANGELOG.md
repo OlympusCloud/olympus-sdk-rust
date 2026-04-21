@@ -2,6 +2,45 @@
 
 ## Unreleased
 
+### TenantApi + IdentityApi invite wrappers (#3403 §4.2 + §4.4)
+
+- `OlympusClient::tenant() -> TenantApi<'_>` — canonical `/tenant/*` surface
+  for signup, current-tenant read/patch, retire/unretire, multi-tenant
+  listing, and cross-tenant switch. Wires to PR #3410's
+  `tenant_lifecycle` handler.
+  - `TenantApi::create(TenantCreateRequest)` — idempotent self-service
+    tenant provisioning (24h window on `idempotency_key`).
+  - `TenantApi::current()` / `TenantApi::update(TenantUpdate)` — read and
+    patch the tenant scoped by the current session.
+  - `TenantApi::retire(&str)` / `TenantApi::retire_with_reason(&str,
+    Option<&str>)` — MFA'd soft-delete with typed `confirmation_slug`
+    and 30-day grace window.
+  - `TenantApi::unretire()` — reverse a retire within the grace window.
+  - `TenantApi::my_tenants()` — every tenant the signed-in user can
+    access.
+  - `TenantApi::switch_tenant(&str) -> ExchangedSession` — chains
+    `POST /tenant/switch` → `POST /auth/switch-tenant` and rotates the
+    HTTP client's access + refresh tokens to the freshly minted pair.
+- `OlympusClient::identity_invites() -> IdentityApi<'_>` — canonical
+  `/identity/invite*` + `/identity/remove_from_tenant` surface. Distinct
+  from the pre-existing `OlympusClient::identity()` accessor which wraps
+  the global Olympus-ID / age-verification service.
+  - `IdentityApi::invite(InviteCreateRequest)` — mint a signed invite
+    token. `InviteHandle::token` populated only on the create response.
+  - `IdentityApi::accept(&str, &str)` — POST
+    `/identity/invites/:token/accept` with the caller's Firebase ID
+    token. Returns the minted session payload as `serde_json::Value`
+    (full `TokenResponse` shape lives in the auth service).
+  - `IdentityApi::list()` — every invite for the caller's tenant
+    (pending + accepted + revoked + expired), capped 500.
+  - `IdentityApi::revoke(&str)` — flip a pending invite to revoked.
+  - `IdentityApi::remove_from_tenant(&str, Option<&str>)` — remove a
+    user from the tenant while preserving their Firebase identity.
+- New public types at the crate root: `Tenant`, `TenantCreateRequest`,
+  `TenantFirstAdmin`, `TenantUpdate`, `TenantProvisionResult`,
+  `TenantOption`, `AppInstall`, `ExchangedSession`, `InviteCreateRequest`,
+  `InviteHandle`, `InviteStatus`, `RemoveFromTenantResponse`.
+
 ### Silent token refresh + broadcast SessionEvents (#3403 §1.4 / #3412)
 
 - `OlympusClient::start_silent_refresh(refresh_margin: Duration) -> SilentRefreshHandle`
