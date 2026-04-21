@@ -19,9 +19,13 @@ pub mod constants;
 pub mod error;
 pub mod http;
 pub mod services;
+pub mod session;
+pub mod silent_refresh;
 
 pub use client::OlympusClient;
 pub use config::OlympusConfig;
 pub use constants::roles::OlympusRoles;
 pub use constants::scopes::OlympusScopes;
 pub use error::OlympusError;
+pub use session::{AuthSession, SessionEvent};
+pub use silent_refresh::SilentRefreshHandle;

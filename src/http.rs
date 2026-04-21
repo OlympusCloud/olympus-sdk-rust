@@ -19,6 +19,10 @@ pub type StaleCatalogHandler = Arc<dyn Fn() + Send + Sync>;
 struct HttpState {
     access_token: Option<String>,
     app_token: Option<String>,
+    /// Refresh token used by the silent-refresh task (#3412). Stored here
+    /// so the background task and the public token-management API share
+    /// one source of truth.
+    refresh_token: Option<String>,
     on_stale_catalog: Option<StaleCatalogHandler>,
     // Debounce: last access_token value that already fired the stale handler.
     stale_notified_for_token: Option<String>,
@@ -83,6 +87,24 @@ impl OlympusHttpClient {
         s.access_token = None;
         s.stale_notified_for_token = None;
         s.invalidate_decode_cache();
+    }
+
+    /// Set the refresh token used by the silent-refresh task (#3412).
+    pub fn set_refresh_token(&self, token: impl Into<String>) {
+        let mut s = self.state.write().expect("poisoned");
+        s.refresh_token = Some(token.into());
+    }
+
+    /// Clear the refresh token.
+    pub fn clear_refresh_token(&self) {
+        let mut s = self.state.write().expect("poisoned");
+        s.refresh_token = None;
+    }
+
+    /// Internal — returns the current refresh token. Used by the silent-refresh
+    /// task to build the `/auth/refresh` request body.
+    pub fn refresh_token_for_internal(&self) -> Option<String> {
+        self.state.read().expect("poisoned").refresh_token.clone()
     }
 
     /// Set the App JWT (X-App-Token, §4.5 dual-JWT flow).

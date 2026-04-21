@@ -19,3 +19,4 @@ base64 = "0.22"
 
 [dev-dependencies]
 mockito = "1"
+wiremock = "0.6"
