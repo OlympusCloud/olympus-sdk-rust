@@ -71,17 +71,13 @@ impl ConnectService {
     /// Creates a pre-conversion lead. Safe to retry — deduplicates on email.
     ///
     /// Backing endpoint: `POST /api/v1/leads`.
-    pub async fn create_lead(
-        &self,
-        request: &CreateLeadRequest,
-    ) -> Result<CreateLeadResponse> {
+    pub async fn create_lead(&self, request: &CreateLeadRequest) -> Result<CreateLeadResponse> {
         if request.email.is_empty() {
             return Err(OlympusError::Config("email is required".into()));
         }
         let body = serde_json::to_value(request).map_err(OlympusError::from)?;
         let raw: Value = self.http.post("/leads", &body).await?;
-        let resp: CreateLeadResponse =
-            serde_json::from_value(raw).map_err(OlympusError::from)?;
+        let resp: CreateLeadResponse = serde_json::from_value(raw).map_err(OlympusError::from)?;
         Ok(resp)
     }
 }

@@ -64,11 +64,18 @@ impl VoiceOrdersService {
         self.http.post("/voice-orders", &body).await
     }
 
+    /// Creates a voice order from a pre-built JSON object.
+    ///
+    /// Dart-parity equivalent of `voiceOrders.create(order)`. Callers supply
+    /// the full body (`location_id`, `items`, `fulfillment`, etc.) as a single
+    /// [`Value`] instead of the typed field-by-field [`create`](Self::create).
+    pub async fn create_raw(&self, order: Value) -> Result<Value> {
+        self.http.post("/voice-orders", &order).await
+    }
+
     /// Retrieves a single voice order by ID.
     pub async fn get(&self, order_id: &str) -> Result<Value> {
-        self.http
-            .get(&format!("/voice-orders/{}", order_id))
-            .await
+        self.http.get(&format!("/voice-orders/{}", order_id)).await
     }
 
     /// Lists voice orders with optional filters.
@@ -86,17 +93,12 @@ impl VoiceOrdersService {
         if let Some(l) = opts.limit {
             query.push(("limit", l.to_string()));
         }
-        let query_refs: Vec<(&str, &str)> = query
-            .iter()
-            .map(|(k, v)| (*k, v.as_str()))
-            .collect();
+        let query_refs: Vec<(&str, &str)> = query.iter().map(|(k, v)| (*k, v.as_str())).collect();
 
         if query_refs.is_empty() {
             self.http.get("/voice-orders").await
         } else {
-            self.http
-                .get_with_query("/voice-orders", &query_refs)
-                .await
+            self.http.get_with_query("/voice-orders", &query_refs).await
         }
     }
 

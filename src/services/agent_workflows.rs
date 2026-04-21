@@ -58,10 +58,7 @@ impl AgentWorkflowsService {
         if let Some(l) = opts.limit {
             query.push(("limit", l.to_string()));
         }
-        let query_refs: Vec<(&str, &str)> = query
-            .iter()
-            .map(|(k, v)| (*k, v.as_str()))
-            .collect();
+        let query_refs: Vec<(&str, &str)> = query.iter().map(|(k, v)| (*k, v.as_str())).collect();
         self.http
             .get_with_query("/agent-workflows", &query_refs)
             .await
@@ -129,10 +126,7 @@ impl AgentWorkflowsService {
         if let Some(l) = opts.limit {
             query.push(("limit", l.to_string()));
         }
-        let query_refs: Vec<(&str, &str)> = query
-            .iter()
-            .map(|(k, v)| (*k, v.as_str()))
-            .collect();
+        let query_refs: Vec<(&str, &str)> = query.iter().map(|(k, v)| (*k, v.as_str())).collect();
         self.http
             .get_with_query(
                 &format!("/agent-workflows/{}/executions", workflow_id),
@@ -153,10 +147,7 @@ impl AgentWorkflowsService {
     pub async fn set_schedule(&self, workflow_id: &str, cron_expression: &str) -> Result<Value> {
         let body = json!({ "cron_expression": cron_expression });
         self.http
-            .post(
-                &format!("/agent-workflows/{}/schedule", workflow_id),
-                &body,
-            )
+            .post(&format!("/agent-workflows/{}/schedule", workflow_id), &body)
             .await
     }
 

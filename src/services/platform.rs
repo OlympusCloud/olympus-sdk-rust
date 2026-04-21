@@ -38,12 +38,7 @@ impl PlatformService {
     }
 
     /// Executes the automated tenant cleanup/offboarding workflow.
-    pub async fn cleanup(
-        &self,
-        tenant_id: &str,
-        reason: &str,
-        export_data: bool,
-    ) -> Result<Value> {
+    pub async fn cleanup(&self, tenant_id: &str, reason: &str, export_data: bool) -> Result<Value> {
         let body = json!({
             "tenant_id": tenant_id,
             "reason": reason,

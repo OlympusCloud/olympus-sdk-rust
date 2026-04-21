@@ -70,10 +70,7 @@ impl FinOpsService {
         end_date: &str,
         granularity: Option<&str>,
     ) -> Result<Value> {
-        let mut path = format!(
-            "/finops/costs/trend?start={}&end={}",
-            start_date, end_date
-        );
+        let mut path = format!("/finops/costs/trend?start={}&end={}", start_date, end_date);
         if let Some(g) = granularity {
             path.push_str(&format!("&granularity={}", g));
         }
@@ -113,10 +110,7 @@ impl FinOpsService {
     // ─── Cost Anomaly Detection (#2943) ───────────────────────────
 
     /// Get detected cost anomalies.
-    pub async fn list_anomalies(
-        &self,
-        severity: Option<&str>,
-    ) -> Result<Value> {
+    pub async fn list_anomalies(&self, severity: Option<&str>) -> Result<Value> {
         let mut path = "/finops/anomalies".to_string();
         if let Some(s) = severity {
             path.push_str(&format!("?severity={}", s));
@@ -125,11 +119,7 @@ impl FinOpsService {
     }
 
     /// Acknowledge a cost anomaly.
-    pub async fn acknowledge_anomaly(
-        &self,
-        anomaly_id: &str,
-        notes: &str,
-    ) -> Result<Value> {
+    pub async fn acknowledge_anomaly(&self, anomaly_id: &str, notes: &str) -> Result<Value> {
         let body = json!({
             "anomaly_id": anomaly_id,
             "notes": notes,
@@ -145,10 +135,7 @@ impl FinOpsService {
     // ─── AI Cost Attribution ──────────────────────────────────────
 
     /// Get AI inference cost attribution by feature.
-    pub async fn ai_cost_attribution(
-        &self,
-        period: Option<&str>,
-    ) -> Result<Value> {
+    pub async fn ai_cost_attribution(&self, period: Option<&str>) -> Result<Value> {
         let mut path = "/finops/ai-costs/attribution".to_string();
         if let Some(p) = period {
             path.push_str(&format!("?period={}", p));

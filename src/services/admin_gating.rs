@@ -55,17 +55,10 @@ impl AdminGatingService {
     // ─── Plan-Level Feature Assignment ───────────────────────────
 
     /// Set the list of feature keys enabled for a billing plan.
-    pub async fn set_plan_features(
-        &self,
-        plan_id: &str,
-        feature_keys: &[String],
-    ) -> Result<Value> {
+    pub async fn set_plan_features(&self, plan_id: &str, feature_keys: &[String]) -> Result<Value> {
         let body = json!({ "feature_keys": feature_keys });
         self.http
-            .put(
-                &format!("/admin/gating/plans/{}/features", plan_id),
-                &body,
-            )
+            .put(&format!("/admin/gating/plans/{}/features", plan_id), &body)
             .await
     }
 

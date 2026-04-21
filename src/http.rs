@@ -6,7 +6,7 @@ use serde_json::Value;
 use crate::config::OlympusConfig;
 use crate::error::{OlympusError, Result};
 
-const SDK_VERSION: &str = "rust/0.3.0";
+const SDK_VERSION: &str = "rust/0.5.0";
 
 /// Callback fired when the server returns `X-Olympus-Catalog-Stale: true`
 /// (§4.7 rolling window). Consumers should schedule a background token refresh
@@ -60,9 +60,7 @@ impl std::fmt::Debug for OlympusHttpClient {
 impl OlympusHttpClient {
     /// Creates a new HTTP client from the given configuration.
     pub fn new(config: Arc<OlympusConfig>) -> Result<Self> {
-        let client = Client::builder()
-            .timeout(config.timeout())
-            .build()?;
+        let client = Client::builder().timeout(config.timeout()).build()?;
 
         Ok(Self {
             client,
@@ -104,6 +102,15 @@ impl OlympusHttpClient {
     /// Internal — returns the current access token for JWT-bitset decoding.
     pub fn access_token_for_internal(&self) -> Option<String> {
         self.state.read().expect("poisoned").access_token.clone()
+    }
+
+    /// Returns a reference to the underlying [`OlympusConfig`].
+    ///
+    /// Exposed so services that need the raw base URL (e.g. `VoiceService`
+    /// composing a `wss://` URL for the edge voice pipeline) can avoid a
+    /// round-trip through the client.
+    pub fn config(&self) -> &OlympusConfig {
+        &self.config
     }
 
     /// Internal fast-path: returns the decoded scope bitset for the current
@@ -322,7 +329,11 @@ impl OlympusHttpClient {
 
             Err(OlympusError::Api {
                 status: status_code,
-                message: if !message.is_empty() { message } else { body_text },
+                message: if !message.is_empty() {
+                    message
+                } else {
+                    body_text
+                },
             })
         }
     }

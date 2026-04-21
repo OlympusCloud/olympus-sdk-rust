@@ -1,5 +1,90 @@
 # Changelog
 
+## 0.5.0 (2026-04-19)
+
+### Wave 2 of the SDK 1.0 Campaign (OlympusCloud/olympus-cloud-gcp#3216)
+
+Dart-parity port of voice + identity + smart-home + sms + voice-orders.
+All Wave 1 signatures preserved; new methods are additive.
+
+**New services:**
+
+- `client.identity()` — global, cross-tenant Olympus ID + age verification
+  (`OlympusIdentity`, `IdentityLink` typed). Routes:
+  `/platform/identities`, `/platform/identities/links`, `/identity/scan-id`,
+  `/identity/status/{phone}`, `/identity/{verify,set}-passphrase`,
+  `/identity/create-upload-session`.
+- `client.smart_home()` — consumer smart-home: platforms, devices, rooms,
+  scenes, automations. Routes: `/smart-home/*`.
+- `client.sms()` — SMS send + delivery via the CPaaS abstraction
+  (Telnyx-primary / Twilio-fallback). Routes: `/voice/sms/*`,
+  `/cpaas/messages/*`.
+
+**Voice service expansion (~40 new methods):**
+
+- Agent CRUD: `list_configs`, `get_config`, `create_config`,
+  `update_config`, `delete_config`, `create_agent`, `update_agent`,
+  `clone_agent`, `preview_agent_voice`, `list_gemini_voices`,
+  `list_agents`/`get_agent`/`delete_agent` aliases.
+- Voice pool, schedule, provisioning wizard + status.
+- Persona library: `list_personas`, `get_persona`,
+  `apply_persona_to_agent`.
+- Templates: `list_agent_templates`, `instantiate_agent_template`,
+  `publish_agent_as_template`, `list_templates`.
+- Background ambiance: `list_ambiance_library`, `upload_ambiance_bed`
+  (base64-encoded), `update_agent_ambiance`,
+  `update_agent_voice_overrides`.
+- Workflow templates: `list/create/get/delete_workflow_template`,
+  `create_workflow_instance`.
+- Voicemail: `list_voicemails`, `update_voicemail`,
+  `get_voicemail_audio_url`.
+- Conversations + messages: `list_conversations`, `get_conversation`,
+  `list_messages`.
+- Analytics, campaigns, phone numbers (incl. port lifecycle).
+- Marketplace voices + packs: `list_voices`, `get_my_voices`,
+  `list_packs`, `get_pack`, `install_pack`.
+- Calls: `end_call`. Speaker: `get_speaker_profile`, `enroll_speaker`,
+  `add_words`. Profiles: `list/get/create/update_profile`.
+- Edge voice pipeline: `process_audio` (base64-encoded),
+  `pipeline_health`, `get_voice_web_socket_url(session_id)` →
+  `wss://…/ws/voice` URL helper.
+- Caller profiles (#2868): `get/list/upsert/delete_caller_profile`,
+  `record_caller_order`.
+- Escalation + business hours (#2870): `get/update_escalation_config`,
+  `get/update_business_hours`.
+- Agent testing (#170): `test_agent`.
+
+**Voice orders:** added `create_raw(order: Value)` for dart parity
+alongside the existing typed `create(...)`.
+
+**Client surface:**
+
+- New typed `OlympusClient` accessors: `consent()`, `governance()`,
+  `identity()`, `smart_home()`, `sms()`.
+- New token + scope helpers on `OlympusClient`: `set_access_token`,
+  `clear_access_token`, `set_app_token`, `clear_app_token`,
+  `on_catalog_stale`, `is_app_scoped`, `has_scope_bit(bit)`. Closes
+  the gap that left `tests/app_scoped_permissions.rs` referencing
+  unimplemented methods on `main`.
+- New `OlympusHttpClient::config()` accessor (read-only) —
+  required by `VoiceService::get_voice_web_socket_url`.
+
+**Tests:** 95/95 passing across 8 test binaries
+(8 lib + 11 app-scoped + 8 identity + 9 smart-home + 7 sms +
+7 voice-orders + 43 voice + 2 doc).
+
+**Convention notes (deviations called out for reviewers):**
+
+- List methods return `Result<Value>` (full envelope), not
+  `Result<Vec<Value>>`. Matches the pre-existing convention used by
+  every other service in this crate (commerce, agent_workflows, …).
+- Most endpoint responses outside V2-005 are returned as
+  `serde_json::Value` (mirrors dart's `Map<String, dynamic>`); only
+  `OlympusIdentity` + `IdentityLink` carry typed shapes.
+- `IdentityService::scan_id` faithfully reproduces dart's
+  `List<int>`-as-JSON-array shape (dart comments call this out as
+  multipart-but-not-actually).
+
 ## 0.4.0 (2026-04-18)
 
 ### Wave 1 of the SDK 1.0 Campaign (OlympusCloud/olympus-cloud-gcp#3216, Wave #3217)

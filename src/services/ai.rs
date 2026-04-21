@@ -73,9 +73,8 @@ impl AiService {
             body["context"] = ctx;
         }
         if let Some(caps) = opts.required_capabilities {
-            body["required_capabilities"] = Value::Array(
-                caps.into_iter().map(Value::String).collect(),
-            );
+            body["required_capabilities"] =
+                Value::Array(caps.into_iter().map(Value::String).collect());
         }
         self.http.post("/ai/chat", &body).await
     }
