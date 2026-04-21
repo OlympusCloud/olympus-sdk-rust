@@ -24,11 +24,7 @@ impl AdminOpsService {
     // ─── Impersonation ────────────────────────────────────────────
 
     /// Start an impersonation session (super admin only).
-    pub async fn start_impersonation(
-        &self,
-        target_user_id: &str,
-        reason: &str,
-    ) -> Result<Value> {
+    pub async fn start_impersonation(&self, target_user_id: &str, reason: &str) -> Result<Value> {
         let body = json!({
             "target_user_id": target_user_id,
             "reason": reason,
@@ -38,9 +34,7 @@ impl AdminOpsService {
 
     /// End an active impersonation session.
     pub async fn end_impersonation(&self) -> Result<Value> {
-        self.http
-            .post("/admin/impersonate/end", &json!({}))
-            .await
+        self.http.post("/admin/impersonate/end", &json!({})).await
     }
 
     // ─── Billing ──────────────────────────────────────────────────
@@ -140,11 +134,7 @@ impl AdminOpsService {
     }
 
     /// Mark an onboarding step as complete.
-    pub async fn complete_onboarding_step(
-        &self,
-        tenant_id: &str,
-        step: &str,
-    ) -> Result<Value> {
+    pub async fn complete_onboarding_step(&self, tenant_id: &str, step: &str) -> Result<Value> {
         let body = json!({
             "tenant_id": tenant_id,
             "step": step,

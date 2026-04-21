@@ -102,11 +102,7 @@ impl SreAnalyticsService {
     }
 
     /// Get probe results/history.
-    pub async fn probe_results(
-        &self,
-        probe_id: &str,
-        limit: Option<u32>,
-    ) -> Result<Value> {
+    pub async fn probe_results(&self, probe_id: &str, limit: Option<u32>) -> Result<Value> {
         let mut path = format!("/sre/synthetic/probes/{}/results", probe_id);
         if let Some(l) = limit {
             path.push_str(&format!("?limit={}", l));
@@ -149,10 +145,7 @@ impl SreAnalyticsService {
     // ─── Incident Management ──────────────────────────────────────
 
     /// List active incidents.
-    pub async fn list_incidents(
-        &self,
-        status: Option<&str>,
-    ) -> Result<Value> {
+    pub async fn list_incidents(&self, status: Option<&str>) -> Result<Value> {
         let mut path = "/sre/incidents".to_string();
         if let Some(s) = status {
             path.push_str(&format!("?status={}", s));
@@ -187,10 +180,7 @@ impl SreAnalyticsService {
             "notes": notes,
         });
         self.http
-            .post(
-                &format!("/sre/incidents/{}/update", incident_id),
-                &body,
-            )
+            .post(&format!("/sre/incidents/{}/update", incident_id), &body)
             .await
     }
 

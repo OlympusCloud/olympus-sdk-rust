@@ -63,16 +63,10 @@ impl AdminBillingService {
     // ─── Usage Metering ──────────────────────────────────────────
 
     /// Get usage data for a tenant, optionally filtered by meter type.
-    pub async fn get_usage(
-        &self,
-        tenant_id: &str,
-        meter_type: Option<&str>,
-    ) -> Result<Value> {
+    pub async fn get_usage(&self, tenant_id: &str, meter_type: Option<&str>) -> Result<Value> {
         let path = format!("/admin/billing/usage/{}", tenant_id);
         if let Some(mt) = meter_type {
-            self.http
-                .get_with_query(&path, &[("meter_type", mt)])
-                .await
+            self.http.get_with_query(&path, &[("meter_type", mt)]).await
         } else {
             self.http.get(&path).await
         }

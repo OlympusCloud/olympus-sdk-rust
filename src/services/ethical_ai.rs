@@ -75,10 +75,7 @@ impl EthicalAiService {
     // ─── Red-Teaming (#2937) ──────────────────────────────────────
 
     /// Submit a red-team adversarial prompt for testing.
-    pub async fn submit_redteam_prompt(
-        &self,
-        opts: RedTeamOptions<'_>,
-    ) -> Result<Value> {
+    pub async fn submit_redteam_prompt(&self, opts: RedTeamOptions<'_>) -> Result<Value> {
         let body = json!({
             "prompt": opts.prompt,
             "model_id": opts.model_id,
@@ -105,11 +102,7 @@ impl EthicalAiService {
     // ─── Model Cards (#2936) ──────────────────────────────────────
 
     /// Create or update a model card.
-    pub async fn upsert_model_card(
-        &self,
-        model_id: &str,
-        card: Value,
-    ) -> Result<Value> {
+    pub async fn upsert_model_card(&self, model_id: &str, card: Value) -> Result<Value> {
         let mut body = card;
         body["model_id"] = Value::String(model_id.to_string());
         self.http.post("/ethical-ai/model-cards", &body).await
@@ -136,9 +129,7 @@ impl EthicalAiService {
 
     /// Update AI safety policy rules.
     pub async fn update_safety_policy(&self, policy: Value) -> Result<Value> {
-        self.http
-            .post("/ethical-ai/safety/policy", &policy)
-            .await
+        self.http.post("/ethical-ai/safety/policy", &policy).await
     }
 
     /// Get the AI safety compliance dashboard.
@@ -151,10 +142,7 @@ impl EthicalAiService {
     /// Get explainability report for a specific AI inference.
     pub async fn explain_inference(&self, inference_id: &str) -> Result<Value> {
         self.http
-            .get(&format!(
-                "/ethical-ai/explainability/{}",
-                inference_id
-            ))
+            .get(&format!("/ethical-ai/explainability/{}", inference_id))
             .await
     }
 

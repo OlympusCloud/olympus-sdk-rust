@@ -43,11 +43,7 @@ impl AdminEtherService {
     }
 
     /// List models in the catalog, optionally filtered by tier or provider.
-    pub async fn list_models(
-        &self,
-        tier: Option<&str>,
-        provider: Option<&str>,
-    ) -> Result<Value> {
+    pub async fn list_models(&self, tier: Option<&str>, provider: Option<&str>) -> Result<Value> {
         let mut params = Vec::new();
         if let Some(t) = tier {
             params.push(("tier", t));

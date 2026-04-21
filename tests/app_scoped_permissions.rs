@@ -121,7 +121,10 @@ async fn scope_not_granted_routes_to_consent_required() {
         .await;
 
     let oc = make_client(&server.url());
-    let res = oc.consent().list_granted("pizza-os", None, Holder::Tenant).await;
+    let res = oc
+        .consent()
+        .list_granted("pizza-os", None, Holder::Tenant)
+        .await;
     match res {
         Err(OlympusError::ConsentRequired {
             scope, consent_url, ..
@@ -143,14 +146,20 @@ async fn billing_grace_pulls_header_fallbacks() {
         .with_header("content-type", "application/json")
         .with_header("X-Olympus-Grace-Until", "2026-04-25T00:00:00Z")
         .with_header("X-Olympus-Upgrade-URL", "https://billing/upgrade")
-        .with_body(json!({"error":{"code":"billing_grace_exceeded","message":"lapsed"}}).to_string())
+        .with_body(
+            json!({"error":{"code":"billing_grace_exceeded","message":"lapsed"}}).to_string(),
+        )
         .create_async()
         .await;
 
     let oc = make_client(&server.url());
     let res = oc.governance().list_exceptions(None, None).await;
     match res {
-        Err(OlympusError::BillingGraceExceeded { grace_until, upgrade_url, .. }) => {
+        Err(OlympusError::BillingGraceExceeded {
+            grace_until,
+            upgrade_url,
+            ..
+        }) => {
             assert_eq!(grace_until.as_deref(), Some("2026-04-25T00:00:00Z"));
             assert_eq!(upgrade_url.as_deref(), Some("https://billing/upgrade"));
         }
@@ -171,9 +180,16 @@ async fn webauthn_required_routes_to_device_changed() {
         .await;
 
     let oc = make_client(&server.url());
-    let res = oc.consent().describe("aura-ai", "aura.calendar.read@user").await;
+    let res = oc
+        .consent()
+        .describe("aura-ai", "aura.calendar.read@user")
+        .await;
     match res {
-        Err(OlympusError::DeviceChanged { challenge, requires_reconsent, .. }) => {
+        Err(OlympusError::DeviceChanged {
+            challenge,
+            requires_reconsent,
+            ..
+        }) => {
             assert_eq!(challenge, "abc");
             assert!(requires_reconsent);
         }

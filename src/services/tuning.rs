@@ -28,11 +28,7 @@ impl TuningService {
     /// `job_type` identifies the tuning strategy (e.g. `lora`, `full`,
     /// `distillation`, `rlhf`). `parameters` carries model-specific config
     /// such as `base_model`, `dataset_id`, `epochs`, `learning_rate`, etc.
-    pub async fn create_tuning_job(
-        &self,
-        job_type: &str,
-        parameters: &Value,
-    ) -> Result<Value> {
+    pub async fn create_tuning_job(&self, job_type: &str, parameters: &Value) -> Result<Value> {
         let body = json!({
             "job_type": job_type,
             "parameters": parameters,
@@ -66,9 +62,7 @@ impl TuningService {
 
     /// Get details for a single tuning job.
     pub async fn get_tuning_job(&self, job_id: &str) -> Result<Value> {
-        self.http
-            .get(&format!("/v1/tuning/jobs/{}", job_id))
-            .await
+        self.http.get(&format!("/v1/tuning/jobs/{}", job_id)).await
     }
 
     /// Cancel a running or queued tuning job.
@@ -103,11 +97,7 @@ impl TuningService {
     /// `count` is the number of personas to generate (1-1000).
     /// `distribution` defines the statistical distribution of persona
     /// characteristics.
-    pub async fn generate_persona_batch(
-        &self,
-        count: u32,
-        distribution: &Value,
-    ) -> Result<Value> {
+    pub async fn generate_persona_batch(&self, count: u32, distribution: &Value) -> Result<Value> {
         let body = json!({
             "count": count,
             "distribution": distribution,

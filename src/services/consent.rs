@@ -83,7 +83,9 @@ impl ConsentService {
             holder.path_suffix()
         );
         let body = if let Some(tid) = tenant_id {
-            self.http.get_with_query(&path, &[("tenant_id", tid)]).await?
+            self.http
+                .get_with_query(&path, &[("tenant_id", tid)])
+                .await?
         } else {
             self.http.get(&path).await?
         };

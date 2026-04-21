@@ -68,16 +68,11 @@ impl ChaosService {
 
     /// Execute the next pending fault injection experiment.
     pub async fn execute_next(&self) -> Result<Value> {
-        self.http
-            .post("/chaos/queue/execute", &json!({}))
-            .await
+        self.http.post("/chaos/queue/execute", &json!({})).await
     }
 
     /// Get experiment results history.
-    pub async fn experiment_results(
-        &self,
-        limit: Option<u32>,
-    ) -> Result<Value> {
+    pub async fn experiment_results(&self, limit: Option<u32>) -> Result<Value> {
         let mut path = "/chaos/queue/results".to_string();
         if let Some(l) = limit {
             path.push_str(&format!("?limit={}", l));
@@ -118,11 +113,7 @@ impl ChaosService {
     // ─── Gameday Execution (#2940) ────────────────────────────────
 
     /// Create a gameday plan.
-    pub async fn create_gameday(
-        &self,
-        name: &str,
-        scenarios: Value,
-    ) -> Result<Value> {
+    pub async fn create_gameday(&self, name: &str, scenarios: Value) -> Result<Value> {
         let body = json!({
             "name": name,
             "scenarios": scenarios,

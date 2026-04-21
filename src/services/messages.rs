@@ -93,10 +93,7 @@ impl MessagesService {
         if let Some(l) = opts.limit {
             query.push(("limit", l.to_string()));
         }
-        let query_refs: Vec<(&str, &str)> = query
-            .iter()
-            .map(|(k, v)| (*k, v.as_str()))
-            .collect();
+        let query_refs: Vec<(&str, &str)> = query.iter().map(|(k, v)| (*k, v.as_str())).collect();
 
         if query_refs.is_empty() {
             self.http.get("/messages").await
@@ -145,11 +142,7 @@ impl MessagesService {
     /// * `recipients` -- List of recipient objects.
     /// * `escalation_after_minutes` -- Minutes before escalation (default 15).
     /// * `is_active` -- Whether the department is active.
-    pub async fn configure_department(
-        &self,
-        department: &str,
-        config: Value,
-    ) -> Result<Value> {
+    pub async fn configure_department(&self, department: &str, config: Value) -> Result<Value> {
         self.http
             .put(&format!("/messages/departments/{}", department), &config)
             .await

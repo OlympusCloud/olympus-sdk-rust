@@ -21,9 +21,12 @@ use crate::services::enterprise_context::EnterpriseContextService;
 use crate::services::ethical_ai::EthicalAiService;
 use crate::services::finops::FinOpsService;
 use crate::services::governance::GovernanceService;
+use crate::services::identity::IdentityService;
 use crate::services::messages::MessagesService;
 use crate::services::platform::PlatformService;
 use crate::services::pos::PosService;
+use crate::services::smart_home::SmartHomeService;
+use crate::services::sms::SmsService;
 use crate::services::sre_analytics::SreAnalyticsService;
 use crate::services::tuning::TuningService;
 use crate::services::voice::VoiceService;
@@ -59,8 +62,7 @@ impl OlympusClient {
 
     /// Creates a new client from an explicit configuration.
     pub fn from_config(config: OlympusConfig) -> Self {
-        let http = OlympusHttpClient::new(Arc::new(config))
-            .expect("failed to build HTTP client");
+        let http = OlympusHttpClient::new(Arc::new(config)).expect("failed to build HTTP client");
         Self {
             http: Arc::new(http),
         }
@@ -231,4 +233,104 @@ impl OlympusClient {
         SreAnalyticsService::new(Arc::clone(&self.http))
     }
 
-    // ================================================================}
+    /// Returns the Identity service — global, cross-tenant Olympus ID +
+    /// age-verification (v0.5.0 Wave 2).
+    pub fn identity(&self) -> IdentityService {
+        IdentityService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the SmartHome service — consumer smart-home platforms,
+    /// devices, rooms, scenes, and automations (v0.5.0 Wave 2).
+    pub fn smart_home(&self) -> SmartHomeService {
+        SmartHomeService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the SMS service — outbound SMS + delivery status via the
+    /// CPaaS abstraction (Telnyx primary, Twilio fallback) (v0.5.0 Wave 2).
+    pub fn sms(&self) -> SmsService {
+        SmsService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the Consent service — app-scoped permission grants + prompts.
+    pub fn consent(&self) -> ConsentService {
+        ConsentService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the Governance service — narrow policy-exception framework.
+    pub fn governance(&self) -> GovernanceService {
+        GovernanceService::new(Arc::clone(&self.http))
+    }
+
+    // -----------------------------------------------------------------------
+    // Token management — thin pass-throughs onto the shared HTTP client.
+    // -----------------------------------------------------------------------
+
+    /// Set the user access token (Authorization bearer).
+    pub fn set_access_token(&self, token: impl Into<String>) {
+        self.http.set_access_token(token);
+    }
+
+    /// Clear the user access token.
+    pub fn clear_access_token(&self) {
+        self.http.clear_access_token();
+    }
+
+    /// Set the App JWT (X-App-Token).
+    pub fn set_app_token(&self, token: impl Into<String>) {
+        self.http.set_app_token(token);
+    }
+
+    /// Clear the App JWT.
+    pub fn clear_app_token(&self) {
+        self.http.clear_app_token();
+    }
+
+    /// Register a stale-catalog handler (fires on `X-Olympus-Catalog-Stale:
+    /// true`, debounced per-token).
+    pub fn on_catalog_stale(&self, handler: Option<crate::http::StaleCatalogHandler>) {
+        self.http.on_catalog_stale(handler);
+    }
+
+    // -----------------------------------------------------------------------
+    // App-scoped permissions fast path — decodes `app_scopes_bitset` from
+    // the current access token (cached per-token by the HTTP client).
+    // -----------------------------------------------------------------------
+
+    /// Returns true if the current access token is app-scoped (i.e. carries
+    /// an `app_id` claim and non-empty `app_scopes_bitset`).
+    ///
+    /// Platform-shell tokens (no app context) always return `false`.
+    pub fn is_app_scoped(&self) -> bool {
+        let claims = match self.http.decoded_claims_cached() {
+            Some(c) => c,
+            None => return false,
+        };
+        let has_app_id = claims
+            .get("app_id")
+            .and_then(|v| v.as_str())
+            .map(|s| !s.is_empty())
+            .unwrap_or(false);
+        if !has_app_id {
+            return false;
+        }
+        match self.http.decoded_bitset_cached() {
+            Some(bs) => !bs.is_empty(),
+            None => false,
+        }
+    }
+
+    /// Fast-path O(1) scope check against the bitset embedded in the current
+    /// access token. Returns `false` for any out-of-range bit, for missing
+    /// bitset, or when no token is set.
+    pub fn has_scope_bit(&self, bit: usize) -> bool {
+        let bytes = match self.http.decoded_bitset_cached() {
+            Some(b) => b,
+            None => return false,
+        };
+        let byte_idx = bit / 8;
+        if byte_idx >= bytes.len() {
+            return false;
+        }
+        (bytes[byte_idx] >> (bit % 8)) & 1 == 1
+    }
+}
