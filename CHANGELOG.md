@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+### Silent token refresh + broadcast SessionEvents (#3403 §1.4 / #3412)
+
+- `OlympusClient::start_silent_refresh(refresh_margin: Duration) -> SilentRefreshHandle`
+  — spawns a `tokio` task that sleeps until `exp - refresh_margin` (decoded
+  from the current access token's JWT), POSTs `/auth/refresh`, and swaps
+  the access token on success. Idempotent — a second call aborts the
+  prior task before spawning.
+- `OlympusClient::stop_silent_refresh()` — silent cancellation of the
+  current task. Emits no event.
+- `OlympusClient::logout()` — aborts the silent-refresh task, clears the
+  access + refresh tokens, and broadcasts `SessionEvent::LoggedOut`.
+- `OlympusClient::session_events()` — returns a
+  `tokio::sync::broadcast::Receiver<SessionEvent>` for observing session
+  lifecycle transitions. Channel capacity 32; created once per client and
+  reused across start/stop cycles.
+- `OlympusClient::emit_logged_in(session)` — emit a `LoggedIn` transition
+  after completing a login flow outside the SDK.
+- `OlympusClient::set_refresh_token` / `clear_refresh_token` — manage the
+  refresh token used by the silent-refresh task.
+- New `SessionEvent` enum: `LoggedIn(AuthSession)`, `Refreshed(AuthSession)`,
+  `Expired { reason }`, `LoggedOut`.
+- New `AuthSession` struct — minimal view of `/auth/login` + `/auth/refresh`
+  response bodies (`access_token`, `refresh_token`, `expires_at`,
+  `token_type`, `user_id`, `tenant_id`).
+- New `SilentRefreshHandle` — returned from `start_silent_refresh`; aborts
+  the task on `Drop`.
+
 ### App-scoped permissions — string-keyed scope helpers (#3403 §1.2)
 
 - `OlympusClient::has_scope(&str) -> bool` — string-keyed complement to the

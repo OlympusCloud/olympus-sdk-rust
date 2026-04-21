@@ -1,5 +1,8 @@
 use std::collections::HashSet;
 use std::sync::Arc;
+use std::time::Duration;
+
+use tokio::sync::broadcast;
 
 use crate::config::OlympusConfig;
 use crate::error::{OlympusError, Result};
@@ -32,6 +35,8 @@ use crate::services::sre_analytics::SreAnalyticsService;
 use crate::services::tuning::TuningService;
 use crate::services::voice::VoiceService;
 use crate::services::voice_orders::VoiceOrdersService;
+use crate::session::{AuthSession, SessionEvent};
+use crate::silent_refresh::{spawn_refresh_loop, SilentRefreshHandle, SilentRefreshState};
 
 /// Main entry point for the Olympus Cloud SDK.
 ///
@@ -52,6 +57,10 @@ use crate::services::voice_orders::VoiceOrdersService;
 /// ```
 pub struct OlympusClient {
     http: Arc<OlympusHttpClient>,
+    /// Shared silent-refresh state: broadcast sender + current task abort
+    /// handle. Constructed once per client and reused across start/stop
+    /// cycles so pre-stop subscribers still observe post-start events.
+    refresh: Arc<SilentRefreshState>,
 }
 
 impl OlympusClient {
@@ -66,6 +75,7 @@ impl OlympusClient {
         let http = OlympusHttpClient::new(Arc::new(config)).expect("failed to build HTTP client");
         Self {
             http: Arc::new(http),
+            refresh: SilentRefreshState::new(),
         }
     }
 
@@ -74,6 +84,7 @@ impl OlympusClient {
         let http = OlympusHttpClient::new(Arc::new(config))?;
         Ok(Self {
             http: Arc::new(http),
+            refresh: SilentRefreshState::new(),
         })
     }
 
@@ -286,10 +297,91 @@ impl OlympusClient {
         self.http.clear_app_token();
     }
 
+    /// Set the refresh token used by the silent-refresh task (#3412). The
+    /// SDK does not persist this value — pair with a platform-appropriate
+    /// secure store in your app.
+    pub fn set_refresh_token(&self, token: impl Into<String>) {
+        self.http.set_refresh_token(token);
+    }
+
+    /// Clear the refresh token.
+    pub fn clear_refresh_token(&self) {
+        self.http.clear_refresh_token();
+    }
+
     /// Register a stale-catalog handler (fires on `X-Olympus-Catalog-Stale:
     /// true`, debounced per-token).
     pub fn on_catalog_stale(&self, handler: Option<crate::http::StaleCatalogHandler>) {
         self.http.on_catalog_stale(handler);
+    }
+
+    // -----------------------------------------------------------------------
+    // Silent token refresh + session events (#3403 §1.4 / #3412).
+    // -----------------------------------------------------------------------
+
+    /// Subscribe to session lifecycle transitions — login, silent refresh,
+    /// forced expiry, explicit logout. Returns a
+    /// [`tokio::sync::broadcast::Receiver`]. Lagged receivers will observe
+    /// [`tokio::sync::broadcast::error::RecvError::Lagged`]; the channel
+    /// capacity is 32.
+    ///
+    /// The broadcast channel outlives start/stop cycles — a receiver taken
+    /// before `stop_silent_refresh` will continue to observe subsequent
+    /// `LoggedIn` / `Refreshed` events after a fresh `start_silent_refresh`.
+    pub fn session_events(&self) -> broadcast::Receiver<SessionEvent> {
+        self.refresh.sender.subscribe()
+    }
+
+    /// Emit a [`SessionEvent::LoggedIn`] transition. Callers who have
+    /// completed a login flow outside the SDK (or who want to seed the
+    /// broadcast channel after calling [`crate::services::auth::AuthService::login`])
+    /// can invoke this to notify subscribers.
+    ///
+    /// Does not mutate tokens — callers should already have invoked
+    /// [`Self::set_access_token`] + [`Self::set_refresh_token`].
+    pub fn emit_logged_in(&self, session: AuthSession) {
+        self.refresh.emit(SessionEvent::LoggedIn(session));
+    }
+
+    /// Start the in-SDK silent refresh task. The task sleeps until
+    /// `exp - refresh_margin` (decoded from the current access token),
+    /// POSTs `/auth/refresh` with the cached refresh token, swaps the
+    /// access token on success, and broadcasts a
+    /// [`SessionEvent::Refreshed`]. On failure the task broadcasts
+    /// [`SessionEvent::Expired`] and exits.
+    ///
+    /// Idempotent — a second call aborts the first task before spawning a
+    /// replacement. Dropping the returned [`SilentRefreshHandle`] also
+    /// cancels the task.
+    ///
+    /// Requires a tokio runtime on the current thread (Rust async SDKs
+    /// typically run inside one already).
+    pub fn start_silent_refresh(&self, refresh_margin: Duration) -> SilentRefreshHandle {
+        let abort = spawn_refresh_loop(
+            Arc::clone(&self.http),
+            Arc::clone(&self.refresh),
+            refresh_margin,
+        );
+        // Register the new task in the client-side slot (aborts the prior one).
+        self.refresh.set_current(abort.clone());
+        SilentRefreshHandle::new(abort)
+    }
+
+    /// Stop the silent-refresh task, if any. Idempotent. Does NOT broadcast
+    /// a session event — use [`Self::logout`] for that.
+    pub fn stop_silent_refresh(&self) {
+        self.refresh.abort_current();
+    }
+
+    /// Log out: abort the silent-refresh task, clear the access + refresh
+    /// tokens, and broadcast [`SessionEvent::LoggedOut`]. Does not call the
+    /// server — callers should `await auth().logout()` (or equivalent)
+    /// before invoking this when the server-side invalidation matters.
+    pub fn logout(&self) {
+        self.refresh.abort_current();
+        self.http.clear_access_token();
+        self.http.clear_refresh_token();
+        self.refresh.emit(SessionEvent::LoggedOut);
     }
 
     // -----------------------------------------------------------------------
