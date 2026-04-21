@@ -88,6 +88,14 @@ impl OlympusClient {
         })
     }
 
+    /// Crate-internal accessor for the shared HTTP transport. Used by
+    /// borrow-pattern API modules ([`crate::tenant::TenantApi`],
+    /// [`crate::identity::IdentityApi`]) that hold a `&OlympusClient` rather
+    /// than a cloned `Arc<OlympusHttpClient>`.
+    pub(crate) fn http(&self) -> &Arc<OlympusHttpClient> {
+        &self.http
+    }
+
     /// Returns the authentication service.
     pub fn auth(&self) -> AuthService {
         AuthService::new(Arc::clone(&self.http))
@@ -271,6 +279,27 @@ impl OlympusClient {
     /// Returns the Governance service — narrow policy-exception framework.
     pub fn governance(&self) -> GovernanceService {
         GovernanceService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the Tenant lifecycle API (#3403 §2 + §4.4).
+    ///
+    /// Canonical `/tenant/*` surface — signup, update, retire/unretire,
+    /// multi-tenant listing, cross-tenant switch. Complements
+    /// [`Self::platform`] (the legacy signup/cleanup workflow) which remains
+    /// for operator-driven flows.
+    pub fn tenant(&self) -> crate::tenant::TenantApi<'_> {
+        crate::tenant::TenantApi::new(self)
+    }
+
+    /// Returns the Identity Invite API (#3403 §4.2 + §4.4).
+    ///
+    /// Canonical `/identity/invite*` surface — invite staff/managers, list
+    /// pending invites, accept/revoke invites, remove users from a tenant
+    /// while preserving their Firebase identity. Distinct from
+    /// [`Self::identity`] which wraps the global Olympus ID / age-verification
+    /// surface.
+    pub fn identity_invites(&self) -> crate::identity::IdentityApi<'_> {
+        crate::identity::IdentityApi::new(self)
     }
 
     // -----------------------------------------------------------------------
