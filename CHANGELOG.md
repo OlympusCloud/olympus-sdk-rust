@@ -2,6 +2,37 @@
 
 ## Unreleased
 
+### AppsApi — apps.install consent ceremony (#3413 §3)
+
+Wires to the `/apps/*` routes shipped in olympus-cloud-gcp#3422. Cross-SDK
+parity with sdk-dart#26.
+
+- `OlympusClient::apps() -> AppsApi<'_>` — canonical `/apps/*` surface
+  driving the four-state install ceremony (install → consent → approve/deny
+  → steady state).
+  - `AppsApi::install(AppInstallRequest) -> PendingInstall` — initiate the
+    ceremony. Server creates a pending-install row with a 10-minute TTL.
+    Idempotent on `(tenant_id, app_id, idempotency_key)` within the window.
+  - `AppsApi::list_installed() -> Vec<AppInstall>` — every active app on
+    the caller's tenant.
+  - `AppsApi::uninstall(&str)` — tenant_admin + MFA; emits
+    `platform.app.uninstalled` driving session revocation downstream.
+  - `AppsApi::get_manifest(&str) -> AppManifest` — latest published row.
+  - `AppsApi::get_pending_install(&str) -> PendingInstallDetail` —
+    **anonymous**; the unguessable UUID IS the bearer. Eager-loads the
+    manifest onto `PendingInstallDetail::manifest`.
+  - `AppsApi::approve_pending_install(&str) -> AppInstall` — tenant_admin
+    + MFA; returns the fresh install row.
+  - `AppsApi::deny_pending_install(&str)` — tenant_admin (no MFA).
+- New public types at the crate root: `AppsApi`, `AppInstall` (the canonical
+  6-field `/apps/installed` row — distinct from the inline 3-field
+  `TenantAppInstall` returned by `/tenant/create`), `AppInstallRequest`,
+  `AppManifest`, `PendingInstall`, `PendingInstallDetail`.
+- **Rename** (unreleased, no crates.io publish yet): the 3-field struct
+  previously exported as `olympus_sdk::AppInstall` is now
+  `olympus_sdk::TenantAppInstall` to make room for the canonical 6-field
+  apps-ceremony shape and match the Dart SDK naming.
+
 ### TenantApi + IdentityApi invite wrappers (#3403 §4.2 + §4.4)
 
 - `OlympusClient::tenant() -> TenantApi<'_>` — canonical `/tenant/*` surface
@@ -38,8 +69,10 @@
     user from the tenant while preserving their Firebase identity.
 - New public types at the crate root: `Tenant`, `TenantCreateRequest`,
   `TenantFirstAdmin`, `TenantUpdate`, `TenantProvisionResult`,
-  `TenantOption`, `AppInstall`, `ExchangedSession`, `InviteCreateRequest`,
-  `InviteHandle`, `InviteStatus`, `RemoveFromTenantResponse`.
+  `TenantOption`, `TenantAppInstall` (renamed from the previous
+  `AppInstall` — see `AppsApi` section above), `ExchangedSession`,
+  `InviteCreateRequest`, `InviteHandle`, `InviteStatus`,
+  `RemoveFromTenantResponse`.
 
 ### Silent token refresh + broadcast SessionEvents (#3403 §1.4 / #3412)
 
