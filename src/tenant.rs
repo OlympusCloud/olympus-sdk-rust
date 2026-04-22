@@ -114,8 +114,13 @@ pub struct ExchangedSession {
 }
 
 /// One entry in [`TenantProvisionResult::installed_apps`].
+///
+/// This is the lean 3-field shape returned inline by `/tenant/create` —
+/// distinct from [`crate::apps::AppInstall`] (the 6-field canonical
+/// `/apps/installed` row). Cross-SDK parity with `TenantAppInstall` in
+/// olympus-sdk-dart `tenant.dart`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AppInstall {
+pub struct TenantAppInstall {
     pub app_id: String,
     pub status: String,
     pub installed_at: String,
@@ -132,7 +137,7 @@ pub struct TenantProvisionResult {
     #[serde(default)]
     pub session: ExchangedSession,
     #[serde(default)]
-    pub installed_apps: Vec<AppInstall>,
+    pub installed_apps: Vec<TenantAppInstall>,
     #[serde(default)]
     pub idempotent: bool,
 }

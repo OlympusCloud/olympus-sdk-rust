@@ -302,6 +302,15 @@ impl OlympusClient {
         crate::identity::IdentityApi::new(self)
     }
 
+    /// Returns the Apps install ceremony API (#3413 §3).
+    ///
+    /// Canonical `/apps/*` surface — install, list, uninstall, and consent
+    /// ceremony (pending-install create/get/approve/deny). Wires to the
+    /// Rust platform service routes shipped in olympus-cloud-gcp#3422.
+    pub fn apps(&self) -> crate::apps::AppsApi<'_> {
+        crate::apps::AppsApi::new(self)
+    }
+
     // -----------------------------------------------------------------------
     // Token management — thin pass-throughs onto the shared HTTP client.
     // -----------------------------------------------------------------------

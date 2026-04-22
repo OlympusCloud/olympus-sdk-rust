@@ -13,6 +13,7 @@
 //! }
 //! ```
 
+pub mod apps;
 pub mod client;
 pub mod config;
 pub mod constants;
@@ -32,14 +33,17 @@ pub use error::OlympusError;
 pub use session::{AuthSession, SessionEvent};
 pub use silent_refresh::SilentRefreshHandle;
 
-// Re-export the tenant + identity API types at the crate root so apps can
-// write `use olympus_sdk::{TenantApi, IdentityApi}` without reaching into
-// submodules. Named re-exports (not `pub use tenant::*`) to avoid any
-// future collision with `crate::services::identity`.
+// Re-export the tenant + identity + apps API types at the crate root so
+// apps can write `use olympus_sdk::{TenantApi, IdentityApi, AppsApi}`
+// without reaching into submodules. Named re-exports (not `pub use *`) to
+// avoid any future collision with `crate::services::identity`.
+pub use apps::{
+    AppInstall, AppInstallRequest, AppManifest, AppsApi, PendingInstall, PendingInstallDetail,
+};
 pub use identity::{
     IdentityApi, InviteCreateRequest, InviteHandle, InviteStatus, RemoveFromTenantResponse,
 };
 pub use tenant::{
-    AppInstall, ExchangedSession, Tenant, TenantApi, TenantCreateRequest, TenantFirstAdmin,
+    ExchangedSession, Tenant, TenantApi, TenantAppInstall, TenantCreateRequest, TenantFirstAdmin,
     TenantOption, TenantProvisionResult, TenantUpdate,
 };
