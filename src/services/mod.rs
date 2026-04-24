@@ -25,4 +25,5 @@ pub mod sms;
 pub mod sre_analytics;
 pub mod tuning;
 pub mod voice;
+pub mod voice_marketplace;
 pub mod voice_orders;

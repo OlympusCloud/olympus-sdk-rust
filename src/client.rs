@@ -34,6 +34,7 @@ use crate::services::sms::SmsService;
 use crate::services::sre_analytics::SreAnalyticsService;
 use crate::services::tuning::TuningService;
 use crate::services::voice::VoiceService;
+use crate::services::voice_marketplace::VoiceMarketplaceService;
 use crate::services::voice_orders::VoiceOrdersService;
 use crate::session::{AuthSession, SessionEvent};
 use crate::silent_refresh::{spawn_refresh_loop, SilentRefreshHandle, SilentRefreshState};
@@ -161,6 +162,13 @@ impl OlympusClient {
     /// and POS push (Toast/Square/Clover).
     pub fn voice_orders(&self) -> VoiceOrdersService {
         VoiceOrdersService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the Voice Marketplace reviews service (#3463).
+    ///
+    /// List/submit/delete reviews for marketplace voices.
+    pub fn voice_marketplace(&self) -> VoiceMarketplaceService {
+        VoiceMarketplaceService::new(Arc::clone(&self.http))
     }
 
     /// Returns the Voice AI service with V2-005 cascade resolver (#3162).
