@@ -119,4 +119,66 @@ impl PayService {
         let resp = self.http.get(&path).await?;
         Ok(serde_json::from_value(resp)?)
     }
+
+    /// List all routing configs for the caller's tenant (#3312 pt2 → gcp PR #3537).
+    ///
+    /// All filters optional:
+    /// - `is_active` — `Some(true)` returns only active configs, `Some(false)`
+    ///   only inactive. `None` returns both.
+    /// - `processor` — restrict to one of `olympus_pay`, `square`, `adyen`,
+    ///   `worldpay`. The server rejects anything else with HTTP 400.
+    /// - `limit` — page size 1..=200 (default 100). Pagination by `location_id`
+    ///   lands later if any tenant exceeds 200 active locations.
+    ///
+    /// `RoutingConfigList::total_returned` reflects the count of configs the
+    /// server actually returned; compare against the requested `limit` to
+    /// detect a capped response.
+    pub async fn list_routing(
+        &self,
+        params: ListRoutingParams,
+    ) -> Result<RoutingConfigList> {
+        // Build the query slice with owned strings so we can return a
+        // lifetime-clean &[(&str, &str)] to get_with_query. Using
+        // String::as_str() keeps the allocation explicit and predictable.
+        let limit_str: String;
+        let mut q: Vec<(&str, &str)> = Vec::new();
+        if let Some(active) = params.is_active {
+            q.push(("is_active", if active { "true" } else { "false" }));
+        }
+        if let Some(processor) = params.processor.as_deref() {
+            q.push(("processor", processor));
+        }
+        if let Some(limit) = params.limit {
+            limit_str = limit.to_string();
+            q.push(("limit", limit_str.as_str()));
+        }
+        let resp = self
+            .http
+            .get_with_query("/platform/pay/routing", &q)
+            .await?;
+        Ok(serde_json::from_value(resp)?)
+    }
+}
+
+/// Filters for [`PayService::list_routing`].
+///
+/// `is_active = Some(false)` lets callers explicitly query inactive configs;
+/// `None` returns both active + inactive (matches the server default).
+#[derive(Debug, Clone, Default)]
+pub struct ListRoutingParams {
+    pub is_active: Option<bool>,
+    pub processor: Option<String>,
+    pub limit: Option<u32>,
+}
+
+/// Result of [`PayService::list_routing`] (#3312 pt2 → gcp PR #3537).
+///
+/// `total_returned` is the count of configs the server actually returned;
+/// compare against the requested `limit` to detect a capped response.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RoutingConfigList {
+    #[serde(default)]
+    pub configs: Vec<RoutingConfig>,
+    #[serde(default)]
+    pub total_returned: u32,
 }
