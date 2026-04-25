@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.5.4 (2026-04-25)
+
+### Added — `oc.platform().list_scope_registry` + `get_scope_registry_digest` (gcp#3517)
+
+Wraps the rust-platform scope-catalog read API:
+
+```rust
+use olympus_sdk::services::platform::ListScopeRegistryParams;
+
+let listing = oc
+    .platform()
+    .list_scope_registry(ListScopeRegistryParams {
+        namespace: Some("voice".into()),
+        owner_app_id: Some("orderecho-ai".into()),
+        include_drafts: false,
+    })
+    .await?;
+for row in &listing.scopes {
+    println!("{} (bit {:?}) — {}", row.scope, row.bit_id, row.description);
+}
+
+let digest = oc.platform().get_scope_registry_digest().await?;
+// digest.platform_catalog_digest matches scripts/seed_platform_scopes.py byte-for-byte
+```
+
+`ScopeRow` exposes the full 13-field surface; `bit_id: Option<i64>` is
+nullable for rows not yet allocated a bit (workshop_status pre-`service_ok`).
+`owner_app_id: Some("")` is forwarded as the explicit "platform-owned only"
+filter (semantically distinct from `None`).
+
 ## 0.5.3 (2026-04-25)
 
 ### Added — `oc.pay.list_routing` (gcp#3312 pt2 → PR #3537)
