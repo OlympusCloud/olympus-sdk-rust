@@ -19,7 +19,7 @@ use mockito::{Matcher, Server};
 use olympus_sdk::services::compliance::{
     ListDramShopEventsParams, ListDramShopRulesParams, RecordDramShopEventParams,
 };
-use olympus_sdk::services::pay::ConfigureRoutingParams;
+use olympus_sdk::services::pay::{ConfigureRoutingParams, ListRoutingParams};
 use olympus_sdk::{OlympusClient, OlympusConfig};
 use serde_json::json;
 
@@ -442,5 +442,141 @@ async fn get_routing_url_encodes_location_id() {
     assert_eq!(cfg.location_id, "loc/with space");
     assert_eq!(cfg.preferred_processor, "adyen");
     assert_eq!(cfg.fallback_processors, vec!["worldpay".to_string()]);
+    m.assert_async().await;
+}
+
+// ---------------------------------------------------------------------------
+// PayService::list_routing (#3312 pt2 → gcp PR #3537)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn list_routing_no_filters_returns_configs() {
+    let mut server = Server::new_async().await;
+    // mockito's match_query("") asserts there's no query string at all.
+    let m = server
+        .mock("GET", "/platform/pay/routing")
+        .match_query("")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(
+            json!({
+                "configs": [
+                    {
+                        "tenant_id": "ten-1",
+                        "location_id": "loc-a",
+                        "preferred_processor": "olympus_pay",
+                        "fallback_processors": ["square"],
+                        "is_active": true,
+                        "created_at": "2026-04-25T13:00:00Z",
+                        "updated_at": "2026-04-25T13:00:00Z"
+                    },
+                    {
+                        "tenant_id": "ten-1",
+                        "location_id": "loc-b",
+                        "preferred_processor": "square",
+                        "fallback_processors": [],
+                        "credentials_secret_ref": "olympus-merchant-credentials-acme-square-dev",
+                        "merchant_id": "sq-acct-7",
+                        "is_active": true
+                    }
+                ],
+                "total_returned": 2
+            })
+            .to_string(),
+        )
+        .create_async()
+        .await;
+
+    let oc = make_client(&server.url());
+    let result = oc
+        .pay()
+        .list_routing(ListRoutingParams::default())
+        .await
+        .unwrap();
+    assert_eq!(result.total_returned, 2);
+    assert_eq!(result.configs.len(), 2);
+    assert_eq!(result.configs[0].location_id, "loc-a");
+    assert_eq!(result.configs[0].preferred_processor, "olympus_pay");
+    assert_eq!(result.configs[1].merchant_id.as_deref(), Some("sq-acct-7"));
+    m.assert_async().await;
+}
+
+#[tokio::test]
+async fn list_routing_filters_forwarded_as_query_params() {
+    let mut server = Server::new_async().await;
+    let m = server
+        .mock("GET", "/platform/pay/routing")
+        .match_query(Matcher::AllOf(vec![
+            Matcher::UrlEncoded("is_active".into(), "false".into()),
+            Matcher::UrlEncoded("processor".into(), "worldpay".into()),
+            Matcher::UrlEncoded("limit".into(), "50".into()),
+        ]))
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(json!({"configs": [], "total_returned": 0}).to_string())
+        .create_async()
+        .await;
+
+    let oc = make_client(&server.url());
+    oc.pay()
+        .list_routing(ListRoutingParams {
+            is_active: Some(false),
+            processor: Some("worldpay".to_string()),
+            limit: Some(50),
+        })
+        .await
+        .unwrap();
+    m.assert_async().await;
+}
+
+#[tokio::test]
+async fn list_routing_omits_is_active_when_none() {
+    // is_active = None must result in NO is_active query param so the server
+    // returns both active + inactive. Inverse of the explicit-Some(false) test.
+    let mut server = Server::new_async().await;
+    let m = server
+        .mock("GET", "/platform/pay/routing")
+        .match_query(Matcher::AllOf(vec![
+            Matcher::UrlEncoded("processor".into(), "olympus_pay".into()),
+            Matcher::UrlEncoded("limit".into(), "25".into()),
+        ]))
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(json!({"configs": [], "total_returned": 0}).to_string())
+        .create_async()
+        .await;
+
+    let oc = make_client(&server.url());
+    oc.pay()
+        .list_routing(ListRoutingParams {
+            is_active: None,
+            processor: Some("olympus_pay".to_string()),
+            limit: Some(25),
+        })
+        .await
+        .unwrap();
+    m.assert_async().await;
+}
+
+#[tokio::test]
+async fn list_routing_empty_response() {
+    let mut server = Server::new_async().await;
+    let m = server
+        .mock("GET", "/platform/pay/routing")
+        .match_query("")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(json!({"configs": [], "total_returned": 0}).to_string())
+        .create_async()
+        .await;
+
+    let oc = make_client(&server.url());
+    let result = oc
+        .pay()
+        .list_routing(ListRoutingParams::default())
+        .await
+        .unwrap();
+    assert!(result.configs.is_empty());
+    assert_eq!(result.total_returned, 0);
     m.assert_async().await;
 }

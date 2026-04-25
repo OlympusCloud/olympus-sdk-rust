@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.5.3 (2026-04-25)
+
+### Added — `oc.pay.list_routing` (gcp#3312 pt2 → PR #3537)
+
+`PayService::list_routing` wraps `GET /platform/pay/routing` (the list
+endpoint that landed in olympus-cloud-gcp PR #3537). Lists every payment-
+routing config for the caller's tenant with optional filters:
+
+```rust
+use olympus_sdk::services::pay::ListRoutingParams;
+
+let result = oc
+    .pay()
+    .list_routing(ListRoutingParams {
+        is_active: Some(true),
+        processor: Some("square".into()),
+        limit: Some(50),
+    })
+    .await?;
+for cfg in &result.configs {
+    println!("{} → {}", cfg.location_id, cfg.preferred_processor);
+}
+println!("returned {} configs", result.total_returned);
+```
+
+`RoutingConfigList` exposes `configs: Vec<RoutingConfig>` + `total_returned`
+so callers can detect when `limit` capped the result. `is_active = None`
+returns both active + inactive configs (matches the server default).
+Backwards-compatible — existing `configure_routing` / `get_routing`
+wrappers unchanged.
+
 ## Unreleased
 
 ### AppsApi — apps.install consent ceremony (#3413 §3)
