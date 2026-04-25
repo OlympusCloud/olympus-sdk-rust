@@ -18,6 +18,7 @@ use crate::services::auth::AuthService;
 use crate::services::business::BusinessService;
 use crate::services::chaos::ChaosService;
 use crate::services::commerce::CommerceService;
+use crate::services::compliance::ComplianceService;
 use crate::services::connect::ConnectService;
 use crate::services::consent::ConsentService;
 use crate::services::creator::CreatorService;
@@ -27,6 +28,7 @@ use crate::services::finops::FinOpsService;
 use crate::services::governance::GovernanceService;
 use crate::services::identity::IdentityService;
 use crate::services::messages::MessagesService;
+use crate::services::pay::PayService;
 use crate::services::platform::PlatformService;
 use crate::services::pos::PosService;
 use crate::services::smart_home::SmartHomeService;
@@ -282,6 +284,24 @@ impl OlympusClient {
     /// Returns the Consent service — app-scoped permission grants + prompts.
     pub fn consent(&self) -> ConsentService {
         ConsentService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the Compliance service — dram-shop compliance ledger (#3316).
+    ///
+    /// Append-only event ledger plus jurisdiction/app rule lookup used
+    /// cross-app by BarOS and PizzaOS for liability tracking.
+    pub fn compliance(&self) -> ComplianceService {
+        ComplianceService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the Pay service — payment processor routing config (#3312).
+    ///
+    /// Per-location preferred/fallback processor configuration with
+    /// canonical-secrets credential references. Other payment surfaces
+    /// (intents, refunds, balance, payouts, terminal) are not yet wrapped
+    /// on this Rust SDK.
+    pub fn pay(&self) -> PayService {
+        PayService::new(Arc::clone(&self.http))
     }
 
     /// Returns the Gating service — runtime feature gating + plan details (#3313).

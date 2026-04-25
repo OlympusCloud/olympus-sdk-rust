@@ -10,6 +10,7 @@ pub mod auth;
 pub mod business;
 pub mod chaos;
 pub mod commerce;
+pub mod compliance; // #3316: dram-shop compliance ledger
 pub mod connect;
 pub mod consent;
 pub mod creator;
@@ -20,6 +21,7 @@ pub mod finops;
 pub mod governance;
 pub mod identity;
 pub mod messages;
+pub mod pay; // #3312: payment processor routing config
 pub mod platform;
 pub mod pos;
 pub mod smart_home;
