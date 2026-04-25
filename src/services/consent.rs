@@ -16,16 +16,20 @@ use crate::http::OlympusHttpClient;
 ///
 /// `prompt_hash` must be echoed back on [`ConsentService::grant`] calls so the
 /// server can verify the user saw the current catalog copy.
+///
+/// Shape matches `GET /platform/consent-prompt` (#3242).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConsentPrompt {
+    pub app_id: String,
     pub scope: String,
-    pub description: String,
-    pub consent_copy: String,
+    pub prompt_text: String,
     pub prompt_hash: String,
     #[serde(default)]
     pub is_destructive: bool,
     #[serde(default)]
     pub requires_mfa: bool,
+    #[serde(default)]
+    pub app_may_request: bool,
 }
 
 /// A grant row from `platform_app_tenant_grants` or `platform_app_user_grants`.
@@ -109,7 +113,7 @@ impl ConsentService {
         let body = self
             .http
             .get_with_query(
-                "/api/v1/platform/consent-prompt",
+                "/platform/consent-prompt",
                 &[("app_id", app_id), ("scope", scope)],
             )
             .await?;

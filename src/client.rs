@@ -284,6 +284,11 @@ impl OlympusClient {
         ConsentService::new(Arc::clone(&self.http))
     }
 
+    /// Returns the Gating service — runtime feature gating + plan details (#3313).
+    pub fn gating(&self) -> crate::services::gating::GatingService {
+        crate::services::gating::GatingService::new(Arc::clone(&self.http))
+    }
+
     /// Returns the Governance service — narrow policy-exception framework.
     pub fn governance(&self) -> GovernanceService {
         GovernanceService::new(Arc::clone(&self.http))
