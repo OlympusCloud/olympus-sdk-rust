@@ -14,6 +14,7 @@ pub mod consent;
 pub mod creator;
 pub mod enterprise_context;
 pub mod ethical_ai;
+pub mod firebase_auth;
 pub mod finops;
 pub mod governance;
 pub mod identity;

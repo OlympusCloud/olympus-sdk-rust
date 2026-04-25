@@ -485,6 +485,52 @@ fn route_app_scoped_error(
             status,
             request_id: rid,
         }),
+        // Firebase federation errors (#3275 / #3473)
+        "multiple_tenants_match" => Some(OlympusError::TenantAmbiguous {
+            candidates: extract_firebase_candidates(body),
+            message: msg,
+            status,
+            request_id: rid,
+        }),
+        "firebase_uid_already_linked" => Some(OlympusError::FirebaseUidAlreadyLinked {
+            existing_olympus_id: extract_string(body, "existing_olympus_id"),
+            message: msg,
+            status,
+            request_id: rid,
+        }),
+        "identity_unlinked" => Some(OlympusError::IdentityUnlinked {
+            signup_url: extract_string(body, "signup_url"),
+            hint: extract_string(body, "hint"),
+            message: msg,
+            status,
+            request_id: rid,
+        }),
+        "no_tenant_match" => Some(OlympusError::NoTenantMatch {
+            message: msg,
+            status,
+            request_id: rid,
+        }),
+        "invalid_firebase_token" => Some(OlympusError::InvalidFirebaseToken {
+            message: msg,
+            status,
+            request_id: rid,
+        }),
         _ => None,
+    }
+}
+
+fn extract_firebase_candidates(
+    body: &Option<Value>,
+) -> Vec<crate::services::firebase_auth::FirebaseTenantOption> {
+    let Some(value) = body else {
+        return Vec::new();
+    };
+    // Tolerate both top-level and nested-error candidate shapes.
+    let candidates_value = value
+        .get("candidates")
+        .or_else(|| value.get("error").and_then(|e| e.get("candidates")));
+    match candidates_value {
+        Some(arr) => serde_json::from_value(arr.clone()).unwrap_or_default(),
+        None => Vec::new(),
     }
 }

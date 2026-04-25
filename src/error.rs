@@ -83,6 +83,59 @@ pub enum OlympusError {
     /// locally by the SDK before any network call is made. See #3403 §1.2.
     #[error("Scope required but not granted: {scope}")]
     ScopeRequired { scope: String },
+
+    // ========================================================================
+    // Firebase federation errors (#3275 / #3473)
+    // ========================================================================
+    /// 409 multiple_tenants_match — `/auth/firebase/exchange` was called
+    /// without `tenant_slug` and the auto-resolver found > 1 candidate.
+    /// Apps render a picker from `candidates` and retry with the chosen slug.
+    #[error("Tenant ambiguous: {} candidates", candidates.len())]
+    TenantAmbiguous {
+        candidates: Vec<crate::services::firebase_auth::FirebaseTenantOption>,
+        message: String,
+        status: u16,
+        request_id: Option<String>,
+    },
+
+    /// 409 firebase_uid_already_linked — the Firebase UID is already bound
+    /// to a different Olympus user in the caller's tenant.
+    #[error("Firebase UID already linked: existing={existing_olympus_id:?}")]
+    FirebaseUidAlreadyLinked {
+        existing_olympus_id: Option<String>,
+        message: String,
+        status: u16,
+        request_id: Option<String>,
+    },
+
+    /// 403 identity_unlinked — auto-resolution found no matching tenant and
+    /// no invite_token was supplied. Redirect user to `signup_url`.
+    #[error("Identity unlinked: signup_url={signup_url:?}")]
+    IdentityUnlinked {
+        signup_url: Option<String>,
+        hint: Option<String>,
+        message: String,
+        status: u16,
+        request_id: Option<String>,
+    },
+
+    /// 404 no_tenant_match — auto-resolution found nothing and no invite
+    /// mechanism is in play.
+    #[error("No tenant match: {message}")]
+    NoTenantMatch {
+        message: String,
+        status: u16,
+        request_id: Option<String>,
+    },
+
+    /// 400 invalid_firebase_token — the supplied Firebase ID token failed
+    /// verification (bad signature, expired, wrong audience, etc.).
+    #[error("Invalid Firebase token: {message}")]
+    InvalidFirebaseToken {
+        message: String,
+        status: u16,
+        request_id: Option<String>,
+    },
 }
 
 impl OlympusError {
