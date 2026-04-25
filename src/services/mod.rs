@@ -2,6 +2,7 @@ pub mod admin_billing;
 pub mod admin_cpaas;
 pub mod admin_ether;
 pub mod admin_gating;
+pub mod gating; // #3313: GatingService.get_plan_details
 pub mod admin_ops;
 pub mod agent_workflows;
 pub mod ai;

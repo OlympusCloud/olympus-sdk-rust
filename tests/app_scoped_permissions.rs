@@ -172,7 +172,7 @@ async fn billing_grace_pulls_header_fallbacks() {
 async fn webauthn_required_routes_to_device_changed() {
     let mut server = Server::new_async().await;
     let m = server
-        .mock("GET", "/api/v1/platform/consent-prompt?app_id=aura-ai&scope=aura.calendar.read%40user")
+        .mock("GET", "/platform/consent-prompt?app_id=aura-ai&scope=aura.calendar.read%40user")
         .with_status(401)
         .with_header("content-type", "application/json")
         .with_body(json!({"error":{"code":"webauthn_required","message":"new device","challenge":"abc"},"requires_reconsent":true}).to_string())
