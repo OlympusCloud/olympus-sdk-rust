@@ -12,6 +12,34 @@
 //!     Ok(())
 //! }
 //! ```
+//!
+//! ## Assigning teammate scopes (W12-1 / olympus-cloud-gcp#3599)
+//!
+//! ```rust,no_run
+//! use olympus_sdk::services::auth::AssignRolesRequest;
+//! use olympus_sdk::OlympusClient;
+//!
+//! #[tokio::main]
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     let client = OlympusClient::new("com.my-app", "oc_live_...");
+//!
+//!     // Assign or revoke scopes for a teammate. Caller MUST hold
+//!     // `platform.founder.roles.assign@tenant`.
+//!     client.auth().assign_roles(AssignRolesRequest {
+//!         user_id: "u-1",
+//!         tenant_id: "t-1",
+//!         grant_scopes: &["commerce.order.write@tenant"],
+//!         revoke_scopes: &["platform.policy.write@tenant"],
+//!         note: Some("rotating ops on-call"),
+//!     }).await?;
+//!
+//!     // List teammates the caller can manage; server filters by scope.
+//!     for teammate in client.auth().list_teammates(Some("t-1")).await? {
+//!         println!("{} {} {:?}", teammate.user_id, teammate.role, teammate.assigned_scopes);
+//!     }
+//!     Ok(())
+//! }
+//! ```
 
 pub mod apps;
 pub mod client;
