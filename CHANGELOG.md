@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased
+
+### Added — `oc.i18n()` error manifest consumer (#3638 / monorepo PR #3626)
+
+New `I18nService` wrapping `GET /v1/i18n/errors`, the centralised error
+code → localized message manifest served by the Rust platform service.
+Apps localize platform errors without bundling per-app translations:
+
+```rust
+use olympus_sdk::OlympusClient;
+
+let client = OlympusClient::new("com.my-app", "oc_live_...");
+
+// Fetch the manifest (cached for 1h after first call).
+let manifest = client.i18n().errors("en").await?;
+
+// Look up a single code in the user's locale, with `en` fallback.
+let msg = client.i18n().localize("ORDER_NOT_FOUND", "es").await?;
+```
+
+Concurrent cold callers share a single `tokio::sync::Mutex`-guarded HTTP
+request — we never issue two parallel requests for the same payload.
+The cache state lives on the `OlympusClient` so every `client.i18n()`
+call returns a service backed by the same cache. Fallback chain:
+`locale` → `en` → raw code. Cache TTL matches the backend
+`Cache-Control: max-age=3600`.
+
 ## 0.5.4 (2026-04-25)
 
 ### Added — `oc.platform().list_scope_registry` + `get_scope_registry_digest` (gcp#3517)
