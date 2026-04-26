@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, Mutex};
 
 use crate::config::OlympusConfig;
 use crate::error::{OlympusError, Result};
@@ -26,6 +26,7 @@ use crate::services::enterprise_context::EnterpriseContextService;
 use crate::services::ethical_ai::EthicalAiService;
 use crate::services::finops::FinOpsService;
 use crate::services::governance::GovernanceService;
+use crate::services::i18n::{I18nService, I18nState};
 use crate::services::identity::IdentityService;
 use crate::services::messages::MessagesService;
 use crate::services::pay::PayService;
@@ -64,6 +65,9 @@ pub struct OlympusClient {
     /// handle. Constructed once per client and reused across start/stop
     /// cycles so pre-stop subscribers still observe post-start events.
     refresh: Arc<SilentRefreshState>,
+    /// Shared i18n cache state (#3638). Held on the client so every
+    /// `i18n()` accessor returns a service backed by the same cache.
+    i18n_state: Arc<Mutex<I18nState>>,
 }
 
 impl OlympusClient {
@@ -79,6 +83,7 @@ impl OlympusClient {
         Self {
             http: Arc::new(http),
             refresh: SilentRefreshState::new(),
+            i18n_state: Arc::new(Mutex::new(I18nState::default())),
         }
     }
 
@@ -88,6 +93,7 @@ impl OlympusClient {
         Ok(Self {
             http: Arc::new(http),
             refresh: SilentRefreshState::new(),
+            i18n_state: Arc::new(Mutex::new(I18nState::default())),
         })
     }
 
@@ -112,6 +118,20 @@ impl OlympusClient {
     /// Returns the AI inference and agent service.
     pub fn ai(&self) -> AiService {
         AiService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the error-code i18n manifest consumer (#3638).
+    ///
+    /// Wraps `GET /v1/i18n/errors` with a 1-hour in-memory cache +
+    /// concurrent-fetch dedup. Use
+    /// `client.i18n().localize("CODE", "es").await` to translate
+    /// platform error codes without bundling per-app locale data.
+    ///
+    /// The returned `I18nService` shares its cache state with every
+    /// other `i18n()` call on this client — calling this method
+    /// repeatedly is cheap (the heavy state is held behind an `Arc`).
+    pub fn i18n(&self) -> I18nService {
+        I18nService::new(Arc::clone(&self.http), Arc::clone(&self.i18n_state))
     }
 
     /// Returns the creator platform service.
