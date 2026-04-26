@@ -1,0 +1,46 @@
+{
+  "_recorded": "2026-04-26",
+  "_purpose": "ac-6: e2e fixture against dev.api.olympuscloud.ai for AuthService.assign_roles + list_teammates (W12-1 / olympus-cloud-gcp#3599 fanout).",
+  "_gateway_status": "BLOCKED — POST /platform/users/:id/roles/assign is not registered in backend/go/cmd/api/routes_platform.go on develop. Live e2e against dev returns 404. Tracked as a follow-up gateway PR; SDK contract matches the canonical Dart SDK (sdk-dart#45) and the platform Rust handler exposes /platform/users/{user_id}/roles/assign at the service layer.",
+  "request": {
+    "method": "POST",
+    "path": "/platform/users/00000000-0000-4000-8000-000000000001/roles/assign",
+    "headers": {
+      "authorization": "Bearer <jwt>",
+      "content-type": "application/json",
+      "x-app-experience": "portal"
+    },
+    "body": {
+      "tenant_id": "00000000-0000-4000-8000-0000000000aa",
+      "grant_scopes": ["commerce.order.write@tenant"],
+      "revoke_scopes": ["platform.policy.write@tenant"],
+      "note": "rotating ops on-call"
+    }
+  },
+  "response_success": { "status": 200, "body": { "ok": true, "audit_id": "aud-3599-0001" } },
+  "response_validation_error": {
+    "status": 400,
+    "body": { "error": { "code": "ROLES_VALIDATION_ERROR", "message": "grant_scopes and revoke_scopes cannot both be empty" } }
+  },
+  "response_forbidden": {
+    "status": 403,
+    "body": { "error": { "code": "INSUFFICIENT_PERMISSIONS", "message": "caller lacks platform.founder.roles.assign@tenant" } }
+  },
+  "response_not_found": {
+    "status": 404,
+    "body": { "error": { "code": "USER_NOT_FOUND", "message": "user is not a member of this tenant" } }
+  },
+  "list_teammates_request": {
+    "method": "GET",
+    "path": "/platform/teammates",
+    "query": { "tenant_id": "00000000-0000-4000-8000-0000000000aa" }
+  },
+  "list_teammates_response": {
+    "status": 200,
+    "body": {
+      "data": [
+        { "user_id": "00000000-0000-4000-8000-000000000001", "display_name": "Alice Operator", "role": "tenant_admin", "assigned_scopes": ["commerce.order.write@tenant"] }
+      ]
+    }
+  }
+}
