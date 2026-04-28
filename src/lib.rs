@@ -17,8 +17,10 @@ pub mod client;
 pub mod config;
 pub mod error;
 pub mod http;
+pub mod i18n;
 pub mod services;
 
 pub use client::OlympusClient;
 pub use config::OlympusConfig;
 pub use error::OlympusError;
+pub use i18n::{ErrorManifest, ErrorManifestEntry, I18nService};
