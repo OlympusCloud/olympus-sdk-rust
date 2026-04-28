@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use reqwest::{Client, RequestBuilder, Response};
+use serde::Serialize;
 use serde_json::Value;
 
 use crate::config::OlympusConfig;
@@ -12,17 +13,50 @@ const SDK_VERSION: &str = "rust/0.3.0";
 #[derive(Debug, Clone)]
 pub struct OlympusHttpClient {
     client: Client,
+    /// Companion client with redirect-following disabled. Used by the
+    /// browser-flow endpoints (`/platform/authorize/consent`,
+    /// `/platform/authorize/grant`) which respond with `303 See Other` to
+    /// `return_to?grant_id=...&state=...`. We need to capture the
+    /// `Location` header (or its query params) ourselves rather than
+    /// chase the redirect into a deep-link scheme that reqwest can't
+    /// resolve in production or test.
+    no_redirect_client: Client,
     config: Arc<OlympusConfig>,
+}
+
+/// Response from an HTTP form submit that may emit a redirect. Captures the
+/// status code, Location header, and any response body the server included
+/// (typically empty for 303s).
+#[derive(Debug, Clone)]
+pub struct FormResponse {
+    /// HTTP status code as returned by the server (no redirect follow).
+    pub status: u16,
+    /// Value of the `Location` response header, if present. For the
+    /// `/platform/authorize/consent` and `/platform/authorize/grant`
+    /// endpoints this carries the deep-link return URL plus
+    /// `?grant_id=` (consent) or `?code=` (grant) plus `&state=`.
+    pub location: Option<String>,
+    /// Raw response body. Empty in the common 303 path; populated when
+    /// the server elects to render an HTML error page instead of a
+    /// structured envelope.
+    pub body: String,
 }
 
 impl OlympusHttpClient {
     /// Creates a new HTTP client from the given configuration.
     pub fn new(config: Arc<OlympusConfig>) -> Result<Self> {
-        let client = Client::builder()
+        let client = Client::builder().timeout(config.timeout()).build()?;
+
+        let no_redirect_client = Client::builder()
             .timeout(config.timeout())
+            .redirect(reqwest::redirect::Policy::none())
             .build()?;
 
-        Ok(Self { client, config })
+        Ok(Self {
+            client,
+            no_redirect_client,
+            config,
+        })
     }
 
     /// Sends a GET request to the given path.
@@ -65,6 +99,54 @@ impl OlympusHttpClient {
         let url = self.url(path);
         let req = self.apply_headers(self.client.delete(&url));
         self.execute(req).await
+    }
+
+    /// Sends a POST request with a form-urlencoded body and explicitly does
+    /// NOT follow redirects. Returns the captured status, `Location` header
+    /// (if present), and any non-empty body.
+    ///
+    /// This is the transport for the browser-flow PKCE endpoints
+    /// (`/platform/authorize/consent`, `/platform/authorize/grant`) which
+    /// respond `303 See Other` to a custom-scheme deep-link URL. Following
+    /// the redirect would either fail (no scheme handler) or hit a 404 in
+    /// tests. Callers parse the `Location` themselves to extract
+    /// `grant_id` / `code` / `state` / `error`.
+    pub async fn post_form_no_redirect<T: Serialize>(
+        &self,
+        path: &str,
+        form: &T,
+    ) -> Result<FormResponse> {
+        let url = self.url(path);
+        let mut req = self
+            .no_redirect_client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", self.config.api_key))
+            .header("X-App-Id", &self.config.app_id)
+            .header("X-SDK-Version", SDK_VERSION)
+            .header("Accept", "application/json, text/html");
+        req = req.form(form);
+
+        let resp = req.send().await?;
+        let status = resp.status();
+        let location = resp
+            .headers()
+            .get(reqwest::header::LOCATION)
+            .and_then(|v| v.to_str().ok())
+            .map(str::to_string);
+        let body = resp.text().await.unwrap_or_default();
+
+        // For 303 / 302 / 301 we treat the redirect as success — the caller
+        // is expected to read `location`. Anything outside the 2xx and
+        // standard redirect family surfaces as an `OlympusError::Api`.
+        if status.is_success() || status.is_redirection() {
+            Ok(FormResponse {
+                status: status.as_u16(),
+                location,
+                body,
+            })
+        } else {
+            Err(parse_api_error(status.as_u16(), &body))
+        }
     }
 
     /// Builds the full URL from the base URL and the given path.
