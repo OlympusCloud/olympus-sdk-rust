@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::config::OlympusConfig;
 use crate::error::Result;
 use crate::http::OlympusHttpClient;
+use crate::i18n::I18nService;
 use crate::services::admin_billing::AdminBillingService;
 use crate::services::admin_cpaas::AdminCpaasService;
 use crate::services::admin_ether::AdminEtherService;
@@ -73,6 +74,16 @@ impl OlympusClient {
     /// Returns the authentication service.
     pub fn auth(&self) -> AuthService {
         AuthService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the localized error manifest service (#3638 / parent #3626).
+    ///
+    /// Call `client.i18n().fetch_error_manifest().await` once at app
+    /// startup to warm the module-level cache. After that,
+    /// [`OlympusError::localized_message`] resolves codes to per-locale
+    /// strings without a network round-trip.
+    pub fn i18n(&self) -> I18nService {
+        I18nService::new(Arc::clone(&self.http))
     }
 
     /// Returns the commerce/orders service.
