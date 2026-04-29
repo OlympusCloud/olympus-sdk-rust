@@ -5,6 +5,12 @@ All notable changes to `olympus-sdk` (Rust) will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.0.0-rc1 (2026-04-28)
+
+First release candidate. Fully includes ASP fanout (Wave 14c — #3781 #3788 #3804 #3805 #3806 #3808 #3810 #3817), shadow-metrics surfaces, and per-app token mint/refresh.
+
+No breaking changes from 0.x.
+
 ## [Unreleased]
 
 ### Added — App-Scoped Permissions Wave 14c (Epic #3234)
