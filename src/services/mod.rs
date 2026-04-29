@@ -21,6 +21,7 @@ pub mod finops;
 pub mod governance;
 pub mod i18n;
 pub mod identity;
+pub mod maps; // #3227: geocode, directions, delivery-zone validation
 pub mod messages;
 pub mod pay; // #3312: payment processor routing config
 pub mod platform;

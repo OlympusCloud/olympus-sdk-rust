@@ -27,6 +27,7 @@ use crate::services::ethical_ai::EthicalAiService;
 use crate::services::finops::FinOpsService;
 use crate::services::governance::GovernanceService;
 use crate::services::i18n::{I18nService, I18nState};
+use crate::services::maps::MapsService;
 use crate::services::identity::IdentityService;
 use crate::services::messages::MessagesService;
 use crate::services::pay::PayService;
@@ -332,6 +333,15 @@ impl OlympusClient {
     /// Returns the Governance service — narrow policy-exception framework.
     pub fn governance(&self) -> GovernanceService {
         GovernanceService::new(Arc::clone(&self.http))
+    }
+
+    /// Returns the Maps service — geocoding, turn-by-turn directions, and
+    /// delivery-zone validation (olympus-cloud-gcp#3227).
+    ///
+    /// Routes: `POST /maps/geocode`, `POST /maps/directions`,
+    /// `POST /maps/delivery-zones/validate`.
+    pub fn maps(&self) -> MapsService {
+        MapsService::new(Arc::clone(&self.http))
     }
 
     /// Returns the Tenant lifecycle API (#3403 §2 + §4.4).
