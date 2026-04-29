@@ -45,6 +45,12 @@ pub struct AuthSession {
     /// Tenant id for this session, when echoed by the server.
     #[serde(default)]
     pub tenant_id: Option<String>,
+
+    /// Franchise / company identifier. Present only for tenants that belong to
+    /// a company hierarchy (see olympus-cloud-gcp#3151). `None` for standalone
+    /// single-tenant logins. Decoded from the JWT `company_id` claim.
+    #[serde(default)]
+    pub company_id: Option<String>,
 }
 
 impl AuthSession {
@@ -86,6 +92,10 @@ impl AuthSession {
             .get("tenant_id")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
+        let company_id = inner
+            .get("company_id")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
 
         Self {
             access_token,
@@ -94,6 +104,7 @@ impl AuthSession {
             token_type,
             user_id,
             tenant_id,
+            company_id,
         }
     }
 }
