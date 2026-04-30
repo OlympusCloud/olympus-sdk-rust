@@ -1,0 +1,156 @@
+{
+  "_version": "1.0",
+  "_issue": "olympus-cloud-gcp#3889",
+  "_parent": "olympus-cloud-gcp#3326",
+  "_description": "Canonical golden fixtures for SDK regression testing. All 5 SDK languages load this file and assert identical deserialization output.",
+  "auth_login": {
+    "request": {
+      "method": "POST",
+      "path": "/auth/login",
+      "body": {
+        "email": "user@test.com",
+        "password": "hunter2"
+      }
+    },
+    "response_success": {
+      "status": 200,
+      "body": {
+        "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.golden",
+        "token_type": "Bearer",
+        "expires_in": 3600,
+        "refresh_token": "rt_golden_refresh_001",
+        "user_id": "00000000-0000-4000-8000-000000000001",
+        "tenant_id": "00000000-0000-4000-8000-0000000000aa",
+        "roles": ["manager", "staff"]
+      }
+    },
+    "response_error": {
+      "status": 401,
+      "body": {
+        "error": "invalid_credentials",
+        "message": "Email or password is incorrect.",
+        "code": "AUTH_001"
+      }
+    }
+  },
+  "ai_query": {
+    "request": {
+      "method": "POST",
+      "path": "/ai/chat",
+      "body": {
+        "message": "What are today's top sellers?",
+        "session_id": "sess-golden-001",
+        "stream": false
+      }
+    },
+    "response_success": {
+      "status": 200,
+      "body": {
+        "id": "msg-golden-001",
+        "content": "Based on today's data, your top 3 sellers are: (1) Classic Burger $12.99, (2) Caesar Salad $9.50, (3) Chocolate Shake $4.99.",
+        "model": "gemini-flash",
+        "session_id": "sess-golden-001",
+        "usage": {
+          "prompt_tokens": 18,
+          "completion_tokens": 42,
+          "total_tokens": 60
+        },
+        "finish_reason": "stop"
+      }
+    },
+    "response_error": {
+      "status": 429,
+      "body": {
+        "error": "rate_limit_exceeded",
+        "message": "Too many requests. Please retry after 30 seconds.",
+        "code": "AI_429",
+        "retry_after": 30
+      }
+    }
+  },
+  "commerce_create_order": {
+    "request": {
+      "method": "POST",
+      "path": "/commerce/orders",
+      "body": {
+        "location_id": "00000000-0000-4000-8000-000000000010",
+        "items": [
+          {
+            "catalog_item_id": "00000000-0000-4000-8000-000000000020",
+            "quantity": 2,
+            "unit_price": 12.99,
+            "notes": "No pickles"
+          }
+        ],
+        "source": "online",
+        "customer_note": "Extra napkins please"
+      }
+    },
+    "response_success": {
+      "status": 201,
+      "body": {
+        "id": "00000000-0000-4000-8000-000000000030",
+        "status": "pending",
+        "location_id": "00000000-0000-4000-8000-000000000010",
+        "items": [
+          {
+            "id": "00000000-0000-4000-8000-000000000031",
+            "catalog_item_id": "00000000-0000-4000-8000-000000000020",
+            "name": "Classic Burger",
+            "quantity": 2,
+            "unit_price": 12.99,
+            "total_price": 25.98
+          }
+        ],
+        "subtotal": 25.98,
+        "tax": 2.08,
+        "total": 28.06,
+        "source": "online",
+        "created_at": "2026-04-29T12:00:00Z"
+      }
+    },
+    "response_error": {
+      "status": 422,
+      "body": {
+        "error": "item_unavailable",
+        "message": "Item 00000000-0000-4000-8000-000000000020 is currently 86'd.",
+        "code": "COMMERCE_422",
+        "item_id": "00000000-0000-4000-8000-000000000020"
+      }
+    }
+  },
+  "notify_send": {
+    "request": {
+      "method": "POST",
+      "path": "/notify/send",
+      "body": {
+        "channel": "push",
+        "recipient_id": "00000000-0000-4000-8000-000000000001",
+        "title": "Your order is ready!",
+        "body": "Order #ORD-001 is ready for pickup at Counter 3.",
+        "data": {
+          "order_id": "00000000-0000-4000-8000-000000000030",
+          "action": "order_ready"
+        }
+      }
+    },
+    "response_success": {
+      "status": 200,
+      "body": {
+        "notification_id": "ntf-golden-001",
+        "status": "sent",
+        "channel": "push",
+        "recipient_id": "00000000-0000-4000-8000-000000000001",
+        "sent_at": "2026-04-29T12:01:00Z"
+      }
+    },
+    "response_error": {
+      "status": 404,
+      "body": {
+        "error": "recipient_not_found",
+        "message": "Recipient 00000000-0000-4000-8000-000000000001 has no registered push token.",
+        "code": "NOTIFY_404"
+      }
+    }
+  }
+}
